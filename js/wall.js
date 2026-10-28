@@ -1,15 +1,16 @@
 /* ============================================================
    The wall: draws the ideas from Store in the early test layout.
 
-   Three views over the same ideas:
+   Four views over the same ideas:
      columns: one column per opportunity area
      recent:  every idea, newest first, filling the whole wall
      top:     every idea, most supported first, the leaders enlarged
-   plus a stacked/unstacked toggle and auto-rotate. Keys 1/2/3, S, A and
-   the arrow keys drive it too.
+     latest:  only the most recent idea, large
+   plus filters (one area, one feeling), a stacked/unstacked toggle and
+   auto-rotate. Keys 1-4, S, A and the arrow keys drive it too.
 
-   The current view lives in the URL hash (#v=columns&s=1&r=0), so a
-   reload or a bookmark keeps it.
+   The current view lives in the URL hash (#v=columns&s=1&r=0&a=talent&f=positive),
+   so a reload or a bookmark keeps it.
    ============================================================ */
 
 /* ---------------- settings you might change ---------------- */
@@ -18,7 +19,7 @@
 const ROTATE_SECONDS = 45;
 
 // Views the auto-rotation cycles through, in order.
-const ROTATION = ["columns", "recent", "top"];
+const ROTATION = ["columns", "recent", "top", "latest"];
 
 // A column holding more than fits pages to its next set this often.
 const PAGE_SECONDS = 14;
@@ -43,15 +44,26 @@ let rotateTimer = null;
 let pagePausedUntil = 0;
 let renderQueued = false;
 let noteIdx = 0;
+let lastModel = null;
+let latestShownId = null;      // the idea the Latest view showed last time          // the latest stacks, for the pop-ups (js/detail.js)
+const spotlit = new Map();     // root id -> time "Find my idea" picked it
+
+// A phone or small tablet held by one person, rather than the shared Hub.
+// Phones get a scrolling layout; the Hub never scrolls.
+const isPersonalScreen = () => window.matchMedia("(max-width: 900px)").matches;
+const isPhoneLayout = () => window.matchMedia("(max-width: 760px)").matches;
 
 /* ---------------- view state (kept in the URL hash) ---------------- */
 
 function readState(){
   const h = new URLSearchParams((location.hash || "").replace(/^#/, ""));
+  const f = h.get("f");
   return {
     view: ROTATION.includes(h.get("v")) ? h.get("v") : "columns",
     stacked: h.get("s") !== "0",
-    rotate:  h.get("r") === "1"
+    rotate:  h.get("r") === "1",
+    area:    AREA[h.get("a")] ? h.get("a") : "",
+    feel:    (FEELING[f] || f === "positive" || f === "negative") ? f : ""
   };
 }
 
@@ -61,6 +73,8 @@ function writeState(patch){
   h.set("v", s.view);
   h.set("s", s.stacked ? "1" : "0");
   h.set("r", s.rotate ? "1" : "0");
+  if (s.area) h.set("a", s.area);
+  if (s.feel) h.set("f", s.feel);
   // replaceState avoids piling up history entries on a kiosk screen
   history.replaceState(null, "", location.pathname + location.search + "#" + h.toString());
   return s;
@@ -111,15 +125,17 @@ function renderNote(s, opts){
   const isNew = seen === null || !seen.has(lead.id);
 
   const classes = "note" +
+    (s.found ? " found" : "") +
     (s.size > 1 ? " stacked" : "") +
     (opts.rank ? " ranked" : "") +
     (s.isFresh ? " fresh" : "") +
     (isNew ? " arrive" : "");
 
   return (
-    '<div class="' + classes + '" data-area="' + s.area + '" data-id="' + escapeHtml(lead.id) + '" data-size="' + s.size + '">' +
+    '<div class="' + classes + '" data-area="' + s.area + '" data-id="' + escapeHtml(lead.id) + '" data-size="' + s.size + '"' +
+      ' role="button" tabindex="0">' +
       (opts.rank ? '<span class="rank">' + opts.rank + '</span>' : '') +
-      (s.isFresh ? '<span class="new-tag">New</span>' : '') +
+      (s.isFresh ? '<span class="new-tag">' + (s.found ? "Found" : "New") + '</span>' : '') +
       '<span class="idea">' + escapeHtml(lead.text) + '</span>' +
       (by ? '<span class="from">' + escapeHtml(by) + '</span>' : '') +
       '<div class="note-meta">' +
@@ -143,6 +159,13 @@ function screenScale(){
 function setDensity(view, columnCount, noteCount){
   const root = document.documentElement;
   let fs;
+  if (isPhoneLayout()){
+    // phones scroll, so every note shows in full at a comfortable size
+    root.style.setProperty("--mcols", 1);
+    root.style.setProperty("--note-fs", "15px");
+    boardEl.dataset.density = "0";
+    return;
+  }
   if (view === "columns"){
     root.style.setProperty("--cols", columnCount);
     // deepest column decides the type size
@@ -200,6 +223,8 @@ function renderFlow(stacks, mode){
   const sorted = stacks.slice();
   if (mode === "top"){
     sorted.sort((a, b) => (b.support - a.support) || (b.size - a.size) || (b.latest - a.latest));
+  } else if (mode === "area"){
+    sorted.sort(Stacks.rank);   // same order as that area's column
   } else {
     sorted.sort((a, b) => b.latest - a.latest);
   }
@@ -207,6 +232,58 @@ function renderFlow(stacks, mode){
   return sorted.map((s, i) => renderNote(s, {
     rank: (mode === "top" && i < 3 && s.support > 0) ? (i + 1) : null
   })).join("");
+}
+
+/* ---------------- filters and the Latest view ---------------- */
+
+// state.feel is one feeling word, "positive", "negative", or "" for all.
+function matchesFilters(idea, state){
+  if (state.area && idea.area !== state.area) return false;
+  if (!state.feel) return true;
+  if (!idea.feeling) return false;
+  return FEELING[state.feel] ? idea.feeling === state.feel : FEELING[idea.feeling].tone === state.feel;
+}
+
+function filterLabel(state){
+  const bits = [];
+  if (state.area) bits.push(AREA[state.area].name);
+  if (state.feel) bits.push(FEELING[state.feel] ? FEELING[state.feel].name : state.feel + " feelings");
+  return bits.join(" · ");
+}
+
+function timeAgo(ts){
+  const min = Math.floor((Date.now() - ts) / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return min + " min ago";
+  const h = Math.floor(min / 60);
+  return h < 24 ? plural(h, "hour", "hours") + " ago" : plural(Math.floor(h / 24), "day", "days") + " ago";
+}
+
+// Only the most recent idea (that matches the filters), large.
+function renderLatest(ideas, model, state){
+  const idea = ideas.slice().sort((a, b) => b.ts - a.ts)[0];
+  if (!idea) return null;
+  const area = AREA[idea.area];
+  const stack = model.stacks.find(x => x.root.id === (model.rootOf[idea.id] || idea.id));
+  const isNew = latestShownId !== idea.id;
+  latestShownId = idea.id;
+  const label = filterLabel(state);
+  const parent = idea.parentId && Store.ideas().find(i => i.id === idea.parentId && !i.hidden);
+  return (
+    '<div class="note latest-note' + (isNew ? ' arrive' : '') + '" data-area="' + idea.area + '" data-id="' +
+      escapeHtml(idea.id) + '" data-size="1" role="button" tabindex="0">' +
+      '<p class="latest-label">Most recent idea' + (label ? ' · ' + escapeHtml(label) : '') + ' · ' + timeAgo(idea.ts) + '</p>' +
+      (parent ? '<p class="latest-parent">Building on: “' + escapeHtml(parent.text) + '”</p>' : '') +
+      '<p class="latest-text">' + escapeHtml(idea.text) + '</p>' +
+      (idea.name ? '<p class="latest-by">' + escapeHtml(idea.name) + '</p>' : '') +
+      '<div class="note-meta">' +
+        dotsHtml(stack ? stack.support : idea.votes) +
+        (stack && stack.size > 1 ? '<span class="depth">×' + stack.size + '</span>' : '') +
+        (idea.feeling ? '<span class="feeling">' + escapeHtml(FEELING[idea.feeling].name) + '</span>' : '') +
+        '<span class="area">' + escapeHtml(idea.sample ? "Sample · " + area.short : area.name) + '</span>' +
+      '</div>' +
+    '</div>'
+  );
 }
 
 /* ---------------- render ---------------- */
@@ -223,20 +300,39 @@ function draw(){
   const settings = Store.settings();
   const visible = Store.ideas().filter(i => !i.hidden);
   const model = Stacks.build(visible, Store.fresh);
-  const stacks = s.stacked ? model.stacks : Stacks.explode(model.stacks, Store.fresh);
+  lastModel = model;
+  // Filters narrow what is drawn; the pop-ups still see every idea.
+  const filtering = !!(s.area || s.feel);
+  const shownIdeas = filtering ? visible.filter(i => matchesFilters(i, s)) : visible;
+  const shownModel = filtering ? Stacks.build(shownIdeas, Store.fresh) : model;
+  const stacks = s.stacked ? shownModel.stacks : Stacks.explode(shownModel.stacks, Store.fresh);
 
-  boardEl.dataset.view = s.view;
+  // An idea picked in "Find my idea" is outlined and sits at the top for a while, like a new one.
+  const now = Date.now();
+  for (const x of stacks){
+    const t = spotlit.get(x.root.id);
+    if (t && now - t < Stacks.FRESH_MS){ x.isFresh = true; x.freshAt = Math.max(x.freshAt, t); x.found = true; }
+  }
+
+  // One area picked in the Areas view: that area fills the wall as tiles.
+  const layout = (s.view === "columns" && s.area) ? "area" : s.view;
+  boardEl.dataset.view = layout;
   boardEl.classList.remove("has-more");
 
+  const empty = filtering
+    ? '<p class="board-message">No ideas match ' + escapeHtml(filterLabel(s)) + ' yet.</p>'
+    : '<p class="board-message">Waiting for the first idea…</p>';
   if (Store.status() === "error"){
     boardEl.innerHTML = '<p class="board-message">The wall can’t reach its database.<br>' +
       'Check config.js and the internet connection.</p>';
-  } else if (s.view === "columns"){
+  } else if (layout === "columns"){
     boardEl.innerHTML = renderColumns(stacks, settings);
-  } else if (visible.length === 0){
-    boardEl.innerHTML = '<p class="board-message">Waiting for the first idea…</p>';
+  } else if (layout === "latest"){
+    boardEl.innerHTML = renderLatest(shownIdeas, model, s) || empty;
+  } else if (stacks.length === 0){
+    boardEl.innerHTML = empty;
   } else {
-    boardEl.innerHTML = renderFlow(stacks, s.view);
+    boardEl.innerHTML = renderFlow(stacks, layout);
   }
 
   seen = new Set(stacks.map(x => x.root.id));
@@ -249,6 +345,11 @@ function draw(){
   stackBtn.setAttribute("aria-pressed", s.stacked ? "true" : "false");
   stackBtn.firstChild.textContent = s.stacked ? "Stacked" : "Unstacked";
   document.getElementById("rotateBtn").setAttribute("aria-pressed", s.rotate ? "true" : "false");
+  areaFilterEl.value = s.area;
+  feelFilterEl.value = s.feel;
+  areaFilterEl.classList.toggle("on", !!s.area);
+  feelFilterEl.classList.toggle("on", !!s.feel);
+  clearFiltersEl.hidden = !filtering;
 
   // running total, and how many came in today
   const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
@@ -258,7 +359,8 @@ function draw(){
   tallyTodayEl.textContent = today + " added today";
   tallyTodayEl.hidden = !(today > 0 && today < visible.length);
 
-  if (s.view === "columns") fitColumns(); else fitFlow();
+  if (isPhoneLayout() || layout === "latest") return;   // phones scroll; Latest is one note
+  if (layout === "columns") fitColumns(); else fitFlow();
 }
 
 /* Nobody scrolls a wall. In the Areas view a column holding more ideas than
@@ -448,15 +550,30 @@ viewbarEl.querySelectorAll(".vbtn[data-view]").forEach(btn => {
 document.getElementById("stackBtn").addEventListener("click", toggleStacked);
 document.getElementById("rotateBtn").addEventListener("click", toggleRotate);
 
+const areaFilterEl = document.getElementById("areaFilter");
+const feelFilterEl = document.getElementById("feelFilter");
+const clearFiltersEl = document.getElementById("clearFilters");
+areaFilterEl.innerHTML = '<option value="">All areas</option>' +
+  AREAS.map(a => '<option value="' + a.key + '">' + escapeHtml(a.name) + '</option>').join("");
+feelFilterEl.innerHTML = '<option value="">All feelings</option>' +
+  '<option value="positive">Positive feelings</option><option value="negative">Negative feelings</option>' +
+  '<optgroup label="One feeling">' +
+  FEELINGS.map(f => '<option value="' + f.key + '">' + escapeHtml(f.name) + '</option>').join("") + '</optgroup>';
+const setFilters = patch => { writeState(patch); render(); wakeViewbar(); };
+areaFilterEl.addEventListener("change", () => setFilters({ area: areaFilterEl.value }));
+feelFilterEl.addEventListener("change", () => setFilters({ feel: feelFilterEl.value }));
+clearFiltersEl.addEventListener("click", () => setFilters({ area: "", feel: "" }));
+
 document.addEventListener("keydown", e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.target.closest && e.target.closest("input, textarea")) return;
+  if (e.target.closest && e.target.closest("input, textarea, select")) return;
   if (!document.getElementById("scrim").hidden) return;   // the pop-up is open
   const k = e.key.toLowerCase();
   const cur = readState().view;
   if (k === "1") setView("columns");
   else if (k === "2") setView("recent");
   else if (k === "3") setView("top");
+  else if (k === "4") setView("latest");
   else if (k === "s") toggleStacked();
   else if (k === "a") toggleRotate();
   else if (k === "arrowright") setView(ROTATION[(ROTATION.indexOf(cur) + 1) % ROTATION.length]);
@@ -468,40 +585,84 @@ window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer
 // so a facilitator can also drive the wall by editing the address bar
 window.addEventListener("hashchange", () => { restartRotation(readState()); render(); });
 
-/* ---------------- "Add your idea" on the wall itself ---------------- */
+/* ---------------- pop-ups ---------------- */
 
 const scrimEl = document.getElementById("scrim");
 const sheetEl = document.getElementById("sheet");
-let sheetForm = null;
 
-// The wall is a shared screen: no remembered names or drafts, and the
-// pop-up closes itself shortly after posting so the next person starts fresh.
-function openAdd(parent){
+// On the shared Hub a pop-up someone walked away from closes by itself.
+const SHEET_IDLE_SECONDS = 90;
+
+let sheetForm = null, sheetIdle = null, sheetOpener = null;
+
+// Show html in the pop-up. labelId names the element that titles it.
+function openSheet(html, labelId){
+  if (scrimEl.hidden) sheetOpener = document.activeElement;
+  if (sheetForm){ sheetForm.destroy(); sheetForm = null; }
+  sheetEl.innerHTML = html;
+  sheetEl.setAttribute("aria-labelledby", labelId || "sheetTitle");
   scrimEl.hidden = false;
-  sheetForm = AddForm.mount(sheetEl, {
-    parent: parent || null,
-    source: "hub",
-    rememberName: false,
-    keepDraft: false,
-    resetAfter: 12,
-    idleReset: 120,
-    onClose: closeSheet,
-    // demo mode keeps everything in this browser
-    post: Store.isDemo() ? row => { Store.demoAdd(row); return Promise.resolve("sent"); } : row => Outbox.send(row)
-  });
+  sheetEl.scrollTop = 0;
+  sheetEl.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", closeSheet));
+  keepSheetAwake();
+  return sheetEl;
+}
+
+function keepSheetAwake(){
+  clearTimeout(sheetIdle);
+  if (!isPersonalScreen()) sheetIdle = setTimeout(closeSheet, SHEET_IDLE_SECONDS * 1000);
 }
 
 function closeSheet(){
+  clearTimeout(sheetIdle);
   if (sheetForm) sheetForm.destroy();
   sheetForm = null;
   scrimEl.hidden = true;
   sheetEl.innerHTML = "";
-  document.getElementById("addBtn").focus();
+  const back = sheetOpener && document.contains(sheetOpener) ? sheetOpener : document.getElementById("addBtn");
+  sheetOpener = null;
+  back.focus({ preventScroll: true });
+}
+
+["pointerdown", "keydown", "input"].forEach(ev => sheetEl.addEventListener(ev, keepSheetAwake, { passive: true }));
+scrimEl.addEventListener("click", e => { if (e.target === scrimEl) closeSheet(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !scrimEl.hidden) closeSheet(); });
+
+/* ---------------- "Add your idea" / "Build on this idea" ---------------- */
+
+// parent: {id, text, area} to build on an idea, or nothing for a new one.
+// The Hub is shared: no remembered names or drafts, and the pop-up closes
+// itself shortly after posting so the next person starts fresh.
+function openAdd(parent){
+  const personal = isPersonalScreen();
+  openSheet("", "afTitle");
+  sheetForm = AddForm.mount(sheetEl, {
+    parent: parent || null,
+    source: personal ? "phone" : "hub",
+    rememberName: personal,
+    keepDraft: false,
+    resetAfter: personal ? 0 : 12,
+    idleReset: personal ? 0 : 120,
+    onClose: closeSheet,
+    // demo mode keeps everything in this browser
+    post: Store.isDemo()
+      ? row => { Store.demoAdd(row); return Promise.resolve("sent"); }
+      : (row, followup) => Outbox.send(row, followup)
+  });
 }
 
 document.getElementById("addBtn").addEventListener("click", () => openAdd());
-scrimEl.addEventListener("click", e => { if (e.target === scrimEl) closeSheet(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !scrimEl.hidden) closeSheet(); });
+document.getElementById("findBtn").addEventListener("click", () => openFind());
+
+// Tap (or Enter on) any note to open its details.
+boardEl.addEventListener("click", e => {
+  const note = e.target.closest(".note");
+  if (note) openDetail(note.dataset.id);
+});
+boardEl.addEventListener("keydown", e => {
+  const note = e.target.closest(".note");
+  if (note && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); openDetail(note.dataset.id); }
+});
 
 /* ---------------- start ---------------- */
 

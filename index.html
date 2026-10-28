@@ -29,10 +29,16 @@
   </div>
   <img class="logo logo-right" src="assets/logo-apple-distinguished-school.png" alt="Apple Distinguished School">
 
-  <div class="viewbar" id="viewbar">
+  <!-- Sort and filter the wall. Keys: 1-4 views, S stack, A auto-rotate. -->
+  <div class="viewbar" id="viewbar" role="toolbar" aria-label="Sort and filter the wall">
     <button class="vbtn" type="button" data-view="columns">Areas<span class="k">1</span></button>
     <button class="vbtn" type="button" data-view="recent">Newest<span class="k">2</span></button>
     <button class="vbtn" type="button" data-view="top">Most supported<span class="k">3</span></button>
+    <button class="vbtn" type="button" data-view="latest">Latest<span class="k">4</span></button>
+    <span class="vsep"></span>
+    <select class="vselect" id="areaFilter" aria-label="Show one area"></select>
+    <select class="vselect" id="feelFilter" aria-label="Show one feeling"></select>
+    <button class="vbtn" type="button" id="clearFilters" hidden>Clear filters</button>
     <span class="vsep"></span>
     <button class="vbtn" type="button" id="stackBtn">Stacked<span class="k">S</span></button>
     <button class="vbtn" type="button" id="rotateBtn">Auto<span class="k">A</span></button>
@@ -57,6 +63,7 @@
     <div class="h-label">Facilitators&rsquo; notes</div>
     <div class="h-text" id="highlightText"></div>
   </div>
+  <button class="find-btn" type="button" id="findBtn">Find my idea</button>
   <button class="add-btn" type="button" id="addBtn">Add your idea</button>
   <div class="tally">
     <div class="big" id="tallyBig">0</div>
@@ -78,5 +85,6 @@
 <script src="js/stacks.js"></script>
 <script src="js/store.js"></script>
 <script src="js/wall.js"></script>
+<script src="js/detail.js"></script>
 </body>
 </html>

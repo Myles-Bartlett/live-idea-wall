@@ -183,9 +183,19 @@ const Store = (() => {
     changed();
   }
 
+  // Show a change on this screen straight away (e.g. a support), before the
+  // live update from Supabase confirms it.
+  function patchLocal(id, patch){
+    const idea = ideas.get(id);
+    if (!idea) return;
+    Object.assign(idea, patch);
+    changed();
+  }
+
   return {
     start,
     demoAdd,
+    patchLocal,
     isDemo: () => status === "demo",
     onChange: fn => changeListeners.add(fn),
     onStatus: fn => statusListeners.add(fn),

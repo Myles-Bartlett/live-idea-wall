@@ -21,7 +21,8 @@ body.wall{
 header{
   background:var(--paper);
   border-bottom:1px solid var(--rule);
-  padding:clamp(10px,1.3vh,16px) clamp(24px,3vw,48px) clamp(10px,1.3vh,14px);
+  /* the extra bottom room is for the view bar, which straddles the header's edge */
+  padding:clamp(10px,1.3vh,16px) clamp(24px,3vw,48px) calc(clamp(10px,1.3vh,14px) + 20px);
   text-align:center;
   position:relative;
   flex-shrink:0;
@@ -65,15 +66,15 @@ h1{
   padding:5px 8px; border-radius:999px;
   background:var(--paper); border:1px solid var(--rule);
   box-shadow:0 4px 14px rgba(0,0,0,0.08);
-  opacity:0; transition:opacity 0.25s ease;
 }
-.viewbar:hover, .viewbar.awake, .viewbar:focus-within{ opacity:1; }
-.vbtn{
-  font:inherit; font-size:11px; font-weight:700;
+/* new: always visible. The prototype faded it in on hover, and a touch
+   screen has no hover, so on the Hub it could not be found. */
+.vbtn, .vselect{
+  font:inherit; font-size:clamp(11px,0.62vw,14px); font-weight:700;
   letter-spacing:0.04em; text-transform:uppercase;
   color:var(--muted); background:var(--panel);
   border:1px solid var(--rule); border-radius:999px;
-  padding:6px 12px; cursor:pointer; white-space:nowrap;
+  min-height:34px; padding:6px 12px; cursor:pointer; white-space:nowrap;
   transition:background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .vbtn:hover{ color:var(--navy); border-color:var(--navy); }
@@ -81,6 +82,11 @@ h1{
   background:var(--navy); color:#fff; border-color:var(--navy);
 }
 .vbtn .k{ opacity:0.55; font-weight:600; margin-left:5px; }
+/* filter menus; navy when a filter is on, so a filtered wall is obvious */
+.vselect{ padding-right:10px; }
+.vselect:hover{ color:var(--navy); border-color:var(--navy); }
+.vselect.on{ background:var(--navy); color:#fff; border-color:var(--navy); }
+.vselect option, .vselect optgroup{ text-transform:none; color:var(--ink); background:#fff; }
 .vsep{ width:1px; height:20px; background:var(--rule); margin:0 3px; }
 
 /* ---------------- Board ---------------- */
@@ -99,14 +105,16 @@ h1{
 
 /* --- views: recent / top (one flowing wall of tiles) --- */
 .board[data-view="recent"],
-.board[data-view="top"]{
+.board[data-view="top"],
+.board[data-view="area"]{
   display:block;
   columns:var(--mcols);
   column-gap:clamp(8px,0.8vw,14px);
   overflow:hidden;
 }
 .board[data-view="recent"] .note,
-.board[data-view="top"] .note{
+.board[data-view="top"] .note,
+.board[data-view="area"] .note{
   break-inside:avoid;
   margin:0 0 clamp(8px,0.8vw,14px);
 }
@@ -236,6 +244,43 @@ h1{
   border-radius:999px; padding:1px 7px;
 }
 
+/* new: picked in "Find my idea" */
+.note.found .new-tag{ background:var(--pink); }
+
+/* new: notes open their details on tap */
+.note[role="button"]{ cursor:pointer; }
+.note:focus-visible{ outline:3px solid var(--navy); outline-offset:2px; }
+
+/* --- new view: Latest, only the most recent idea, large --- */
+.board[data-view="latest"]{ display:grid; place-items:center; overflow:hidden; }
+.note.latest-note{
+  width:min(1400px, 100%);
+  padding:clamp(24px,3vw,64px) clamp(28px,3.5vw,72px);
+  border-left-width:clamp(10px,0.8vw,18px);
+  border-radius:14px;
+  box-shadow:0 8px 32px rgba(0,55,103,0.12);
+  font-size:clamp(16px,1.15vw,26px);
+}
+.latest-label{
+  font-size:0.9em; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--muted);
+}
+.latest-text{
+  margin-top:0.5em;
+  font-size:clamp(26px,3vw,68px); font-weight:600; line-height:1.25;
+  color:var(--navy);
+}
+.latest-parent{
+  margin-top:0.6em; padding-left:0.8em;
+  border-left:4px solid var(--rule);
+  color:var(--ink); font-style:italic; line-height:1.4;
+}
+.latest-by{
+  margin-top:0.8em; font-size:1em;
+  color:var(--muted); text-transform:uppercase; letter-spacing:0.04em;
+}
+.latest-note .note-meta{ margin-top:1.2em; font-size:0.95em; }
+
 /* rank badge for the top view */
 .note .rank{
   position:absolute; top:-7px; left:-7px;
@@ -336,6 +381,15 @@ footer{
   transition:opacity 0.4s ease;
 }
 .highlights .h-text.fade{ opacity:0; }
+.find-btn{
+  flex-shrink:0;
+  min-height:52px; padding:0 clamp(16px,1.2vw,26px);
+  font:inherit; font-size:clamp(14px,0.9vw,20px); font-weight:700;
+  color:#fff; background:transparent;
+  border:2px solid rgba(255,255,255,0.85); border-radius:999px; cursor:pointer;
+}
+.find-btn:focus-visible{ outline:3px solid #fff; outline-offset:3px; }
+
 /* new: the Hub's own way in. Navy on yellow is high contrast. */
 .add-btn{
   flex-shrink:0;
@@ -373,9 +427,73 @@ footer{
 .status[data-state="live"]::before{ background:#7CE08F; }
 .status[data-state="demo"]::before{ background:#fff; }
 
+/* ---------------- idea details and Find my idea (pop-ups) ---------------- */
+.sheet-close{
+  position:absolute; top:12px; right:12px;
+  width:44px; height:44px; border-radius:50%;
+  font-size:28px; line-height:1; color:var(--ink);
+  background:var(--panel); border:0; cursor:pointer;
+}
+.detail{ font-size:17px; }
+.detail-area{
+  display:flex; align-items:center; gap:8px; padding-right:52px;
+  font-size:14px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted);
+}
+.detail-area .swatch{ width:12px; height:12px; border-radius:50%; background:var(--accent); }
+.detail-text{
+  margin-top:12px; padding-left:14px;
+  border-left:6px solid var(--accent);
+  font-size:clamp(22px,2vw,32px); font-weight:600; line-height:1.3; color:var(--navy);
+}
+.detail-by{ margin-top:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; font-size:14px; }
+.detail-support{ display:flex; align-items:center; gap:10px; margin-top:18px; font-size:16px; }
+.detail-support .dots{ font-size:22px; }
+.detail-h{ margin-top:24px; font-size:16px; color:var(--navy); }
+.members{ list-style:none; margin-top:8px; display:grid; gap:8px; }
+.members li{ background:var(--panel); border-radius:8px; padding:10px 12px; line-height:1.4; }
+.members small{ display:block; margin-top:4px; color:#5E6470; font-size:13px; text-transform:uppercase; letter-spacing:0.04em; }
+
+.find .af-title{ padding-right:52px; margin-top:0; margin-bottom:14px; font-size:24px; color:var(--navy); }
+.find-results{ list-style:none; margin-top:14px; display:grid; gap:8px; }
+.find-results button{
+  width:100%; text-align:left; cursor:pointer;
+  font:inherit; font-size:16px; line-height:1.4; color:var(--ink);
+  background:var(--panel); border:0; border-left:6px solid var(--accent);
+  border-radius:8px; padding:12px 14px; min-height:48px;
+}
+.find-results small{ display:block; margin-top:4px; color:#5E6470; font-size:13px; }
+.find-hint{ color:#5E6470; font-size:15px; }
+
 @media (max-width: 1100px){
   .board[data-view="columns"]{ grid-template-columns:repeat(3, minmax(0,1fr)); }
-  .viewbar{ position:static; grid-column:1/-1; justify-self:center; transform:none; justify-content:center; margin-top:8px; opacity:1; box-shadow:none; }
+  .viewbar{ position:static; grid-column:1/-1; justify-self:center; transform:none; justify-content:center; flex-wrap:wrap; margin-top:8px; box-shadow:none; border-radius:16px; }
+}
+
+/* ---------------- phones: one person, one hand, so the page scrolls ---------------- */
+@media (max-width: 760px){
+  /* the page itself scrolls (not body), so the footer can stick to the bottom */
+  html{ height:auto; overflow:auto; }
+  body, body.wall{ height:auto; min-height:100vh; overflow:visible; }
+  header{ display:block; text-align:left; padding:12px 16px; }
+  .logo-left{ width:110px; margin-bottom:10px; }
+  .logo-right, .wordmark, .subtitle{ display:none; }
+  h1{ font-size:21px; }
+  .viewbar{ justify-content:flex-start; padding:6px; gap:6px; border-radius:14px; }
+  .vbtn .k, .vsep, #stackBtn, #rotateBtn{ display:none; }
+
+  .board{ padding:12px 16px; }
+  .board[data-view="columns"]{ display:flex; flex-direction:column; gap:14px; }
+  .column, .col-body{ overflow:visible; }
+  .board[data-view="recent"], .board[data-view="top"], .board[data-view="area"]{ overflow:visible; }
+  .board[data-view="latest"]{ min-height:60vh; }
+  .note.latest-note{ padding:22px; }
+
+  footer{
+    position:sticky; bottom:0; z-index:10;
+    gap:10px; padding:10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .qr, .highlights, .status, .tally{ display:none; }
+  .find-btn, .add-btn{ flex:1; min-height:50px; font-size:16px; }
 }
 
 @media (prefers-reduced-motion: reduce){
