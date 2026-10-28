@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sheridan Idea Wall</title>
+<style>
+  /* Sans body/UI font approximates Sheridan's site font (Aktiv Grotesk,
+     a licensed font not available on Google Fonts). Serif is used the
+     same way sheridancollege.ca uses it: only for the wordmark, not
+     for running text. */
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=Work+Sans:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    /* Pulled from sheridancollege.ca's own CSS variables */
+    --navy:     #003767;
+    --teal:     #008EA5;
+    --pink:     #CE2A74;
+    --orange:   #E84100;
+    --yellow:   #FFC107;
+    --green:    #28A745;
+
+    --ink:      #414A51;
+    --paper:    #FFFFFF;
+    --panel:    #F4F6F8;
+    --rule:     #E1E6EA;
+    --muted:    #737682;
+
+    --c-talent:        var(--navy);
+    --c-innovation:    var(--pink);
+    --c-productivity:  var(--teal);
+    --c-resilience:    var(--green);
+    --c-transformation:var(--orange);
+    --c-success:       var(--yellow);
+    --c-other:         var(--muted);
+
+    /* set from JS — how many columns the board draws, and how big notes are */
+    --cols: 6;
+    --mcols: 6;
+    --note-fs: 13px;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ width:100%; height:100%; background:var(--panel); overflow:hidden; }
+
+  body{
+    font-family:'Work Sans', 'Segoe UI', Arial, sans-serif;
+    color:var(--ink);
+    height:100vh; position:relative;
+    display:flex; flex-direction:column;
+  }
+
+  /* ---------------- Header ---------------- */
+  header{
+    background:var(--paper);
+    border-bottom:1px solid var(--rule);
+    padding:clamp(10px,1.3vh,16px) clamp(24px,3vw,48px) clamp(10px,1.3vh,14px);
+    text-align:center;
+    position:relative;
+    flex-shrink:0;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    align-items:center;
+    column-gap:clamp(16px,2vw,32px);
+  }
+  .header-main{ grid-column:2; min-width:0; }
+  .logo{ display:block; height:auto; object-fit:contain; }
+  .logo-left { grid-column:1; justify-self:start;
+    width:clamp(120px,10vw,190px); }
+  .logo-right{ grid-column:3; justify-self:end;
+    width:clamp(110px,9vw,170px); }
+  .wordmark{
+    display:inline-flex; align-items:center; gap:10px;
+    margin-bottom:clamp(6px,1vh,10px);
+  }
+  .wordmark .tag{
+    font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+    color:#fff; background:var(--pink);
+    padding:4px 10px; border-radius:999px;
+  }
+  h1{
+    font-weight:700;
+    font-size:clamp(19px, 2.1vw, 31px);
+    line-height:1.2; color:var(--navy);
+    max-width:1180px; margin:0 auto;
+  }
+  .subtitle{
+    margin-top:6px;
+    font-size:clamp(11px,0.95vw,14px);
+    color:var(--muted);
+  }
+
+  /* ---------------- View bar ---------------- */
+  .viewbar{
+    position:absolute; left:50%; bottom:0; transform:translate(-50%,50%);
+    z-index:5;
+    display:flex; align-items:center; gap:6px;
+    padding:5px 8px; border-radius:999px;
+    background:var(--paper); border:1px solid var(--rule);
+    box-shadow:0 4px 14px rgba(0,0,0,0.08);
+    opacity:0; transition:opacity 0.25s ease;
+  }
+  .viewbar:hover, .viewbar.awake{ opacity:1; }
+  .vbtn{
+    font:inherit; font-size:11px; font-weight:700;
+    letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--muted); background:var(--panel);
+    border:1px solid var(--rule); border-radius:999px;
+    padding:6px 12px; cursor:pointer; white-space:nowrap;
+    transition:background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .vbtn:hover{ color:var(--navy); border-color:var(--navy); }
+  .vbtn[aria-pressed="true"]{
+    background:var(--navy); color:#fff; border-color:var(--navy);
+  }
+  .vbtn .k{ opacity:0.55; font-weight:600; margin-left:5px; }
+  .vsep{ width:1px; height:20px; background:var(--rule); margin:0 3px; }
+
+  /* ---------------- Board ---------------- */
+  .board{
+    flex:1; min-height:0; position:relative;
+    padding:clamp(10px,1.4vh,16px) clamp(16px,2.4vw,40px);
+  }
+
+  /* --- view: columns (by opportunity area) --- */
+  .board[data-view="columns"]{
+    display:grid;
+    grid-template-columns:repeat(var(--cols), minmax(0,1fr));
+    grid-auto-rows:minmax(0,1fr);
+    gap:clamp(8px,0.8vw,14px);
+  }
+
+  /* --- views: recent / top (one flowing wall of tiles) --- */
+  .board[data-view="recent"],
+  .board[data-view="top"]{
+    display:block;
+    columns:var(--mcols);
+    column-gap:clamp(8px,0.8vw,14px);
+    overflow:hidden;
+  }
+  .board[data-view="recent"] .note,
+  .board[data-view="top"] .note{
+    break-inside:avoid;
+    margin:0 0 clamp(8px,0.8vw,14px);
+    cursor:default;
+  }
+
+  .column{
+    display:flex; flex-direction:column; min-height:0;
+    background:var(--paper);
+    border:1px solid var(--rule);
+    border-top:4px solid var(--accent, var(--muted));
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,55,103,0.06);
+    overflow:hidden;
+  }
+
+  .col-head{
+    padding:9px 12px 8px;
+    border-bottom:1px solid var(--rule);
+    flex-shrink:0;
+  }
+  .col-head .swatch{
+    width:9px; height:9px; border-radius:50%;
+    display:inline-block; margin-right:7px;
+    background:var(--accent, var(--muted));
+  }
+  .col-head .label{
+    font-size:clamp(10.5px,0.9vw,13px);
+    font-weight:700; color:var(--navy);
+  }
+  .col-head .count{
+    display:block; margin-top:2px;
+    font-size:10px; color:var(--muted);
+    letter-spacing:0.06em; text-transform:uppercase;
+  }
+
+  .col-body{
+    flex:1; min-height:0; overflow-y:auto;
+    padding:8px 9px 12px;
+    display:flex; flex-direction:column; gap:7px;
+    background:var(--panel);
+    transition:background 0.15s ease, outline 0.15s ease;
+  }
+  .col-body::-webkit-scrollbar{ width:6px; }
+  .col-body::-webkit-scrollbar-thumb{ background:var(--rule); border-radius:4px; }
+
+  .col-body.drag-over{
+    outline:2px dashed var(--accent, var(--muted));
+    outline-offset:-6px;
+    background:rgba(0,55,103,0.05);
+  }
+
+  .col-empty{
+    margin:auto; text-align:center;
+    font-size:11px; color:var(--muted);
+    padding:16px 8px;
+  }
+
+  .note{
+    position:relative;
+    background:var(--paper);
+    color:var(--ink);
+    border-radius:6px;
+    padding:9px 11px;
+    font-size:var(--note-fs);
+    line-height:1.4;
+    box-shadow:0 1px 4px rgba(0,55,103,0.08);
+    border-left:4px solid var(--accent, var(--muted));
+    opacity:0; transform:translateY(8px);
+    animation:noteIn 0.45s ease forwards;
+    cursor:grab;
+  }
+  .note:active{ cursor:grabbing; }
+  .note.dragging{ opacity:0.35; }
+  .note .idea{ display:block; padding-right:14px; }
+  .note .from{
+    display:block; margin-top:5px;
+    font-size:0.8em; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.04em;
+  }
+  .note .moved-dot{
+    position:absolute; top:9px; right:9px;
+    width:7px; height:7px; border-radius:50%;
+    background:var(--accent, var(--muted));
+    opacity:0.55;
+  }
+
+  /* area label, shown only in the mixed views where there is no column head */
+  .note .area{
+    display:none;
+    margin-bottom:5px;
+    font-size:0.72em; font-weight:700;
+    letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--accent, var(--muted));
+  }
+  .board[data-view="recent"] .note .area,
+  .board[data-view="top"] .note .area{ display:block; }
+
+  /* rank badge for the top view */
+  .note .rank{
+    position:absolute; top:-7px; left:-7px;
+    min-width:22px; height:22px; border-radius:999px;
+    background:var(--navy); color:#fff;
+    font-size:11px; font-weight:800;
+    display:none; align-items:center; justify-content:center;
+    padding:0 6px;
+    box-shadow:0 2px 6px rgba(0,55,103,0.25);
+  }
+  .board[data-view="top"] .note.ranked .rank{ display:flex; }
+  .board[data-view="top"] .note.ranked{
+    font-size:calc(var(--note-fs) * 1.28);
+    border-left-width:6px;
+  }
+
+  /* stacked-note "pile" look for a cluster of near-duplicate ideas */
+  .note.stacked{ margin-bottom:9px; }
+  .note.stacked::before,
+  .note.stacked::after{
+    content:"";
+    position:absolute; height:100%;
+    background:var(--paper);
+    border-radius:6px;
+    box-shadow:0 1px 3px rgba(0,55,103,0.08);
+    z-index:-1;
+  }
+  .note.stacked::before{ top:4px; left:7px; right:7px; opacity:0.9; }
+  .note.stacked::after { top:8px; left:12px; right:12px; opacity:0.65; }
+
+  .note-actions{
+    display:flex; align-items:center; gap:7px;
+    margin-top:7px; flex-wrap:wrap;
+  }
+  .like-btn{
+    display:inline-flex; align-items:center; gap:4px;
+    font:inherit; font-size:0.86em; font-weight:600;
+    color:var(--navy);
+    background:var(--panel);
+    border:1px solid var(--rule);
+    border-radius:999px;
+    padding:3px 9px 3px 8px;
+    cursor:pointer;
+    transition:background 0.12s ease, transform 0.08s ease;
+  }
+  .like-btn:hover{ background:#fff; border-color:var(--accent, var(--rule)); }
+  .like-btn:active{ transform:scale(0.94); }
+  .like-btn .arrow{ font-size:0.9em; color:var(--accent, var(--muted)); }
+  .like-btn.small{ font-size:0.8em; padding:2px 7px; }
+  .like-btn:disabled{ opacity:0.6; cursor:default; }
+
+  .stack-toggle{
+    font:inherit; font-size:0.8em; font-weight:600;
+    color:var(--muted);
+    background:none; border:none; cursor:pointer;
+    padding:3px 2px;
+    text-decoration:underline; text-underline-offset:2px;
+  }
+  .stack-toggle:hover{ color:var(--navy); }
+
+  .stack-extra{
+    margin-top:7px; padding-top:7px;
+    border-top:1px dashed var(--rule);
+    display:flex; flex-direction:column; gap:7px;
+  }
+  .stack-extra[hidden]{ display:none; }
+  .stack-extra-row{ font-size:0.94em; }
+  .stack-extra-row .idea{ display:block; }
+  .stack-extra-row .from{
+    display:block; margin-top:4px; margin-bottom:5px;
+    font-size:0.82em; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.04em;
+  }
+
+  @keyframes noteIn{ to{ opacity:1; transform:translateY(0); } }
+
+  /* one accent color per theme */
+  [data-theme="talent"]         { --accent:var(--c-talent); }
+  [data-theme="innovation"]     { --accent:var(--c-innovation); }
+  [data-theme="productivity"]   { --accent:var(--c-productivity); }
+  [data-theme="resilience"]     { --accent:var(--c-resilience); }
+  [data-theme="transformation"] { --accent:var(--c-transformation); }
+  [data-theme="success"]        { --accent:var(--c-success); }
+  [data-theme="other"]          { --accent:var(--c-other); }
+
+  .more-chip{
+    flex-shrink:0; align-self:stretch;
+    font:inherit; font-size:11px; font-weight:700;
+    letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--muted); background:var(--paper);
+    border:1px dashed var(--rule); border-radius:6px;
+    padding:6px 8px; margin-top:1px; cursor:pointer;
+    transition:color 0.12s ease, border-color 0.12s ease;
+  }
+  .more-chip:hover{ color:var(--navy); border-color:var(--navy); }
+
+  .more-pill{
+    position:absolute; right:clamp(16px,2.4vw,40px); bottom:clamp(4px,0.8vh,10px);
+    font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--muted); background:var(--paper);
+    border:1px solid var(--rule); border-radius:999px;
+    padding:4px 11px;
+  }
+
+  /* ---------------- Toast ---------------- */
+  .toast{
+    position:fixed; left:50%; bottom:96px; transform:translate(-50%, 12px);
+    background:var(--navy); color:#fff;
+    font-size:13px; font-weight:600;
+    padding:9px 16px; border-radius:999px;
+    box-shadow:0 4px 16px rgba(0,0,0,0.18);
+    opacity:0; pointer-events:none;
+    transition:opacity 0.2s ease, transform 0.2s ease;
+    z-index:50;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%, 0); }
+  .toast.error{ background:var(--orange); }
+
+  /* ---------------- Footer ---------------- */
+  footer{
+    display:flex; align-items:center; gap:20px;
+    padding:clamp(8px,1.2vh,14px) clamp(24px,3vw,48px);
+    background:linear-gradient(90deg, var(--navy), var(--teal));
+    color:#fff;
+    flex-shrink:0;
+  }
+  .qr{ flex-shrink:0; text-align:center; }
+  .qr img{
+    width:clamp(56px,4.2vw,72px); height:auto;
+    background:#fff; padding:5px; border-radius:8px;
+    display:block;
+  }
+  .qr figcaption{
+    margin-top:5px; font-size:9px; letter-spacing:0.08em;
+    text-transform:uppercase; color:rgba(255,255,255,0.85); line-height:1.4;
+  }
+  .highlights{ flex:1; min-width:0; }
+  .highlights .h-label{
+    font-size:11px; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--yellow); font-weight:700; margin-bottom:4px;
+  }
+  .highlights .h-text{
+    font-family:'Source Serif 4', Georgia, serif; font-style:italic; font-weight:500;
+    font-size:clamp(13px,1.1vw,18px); color:#fff; opacity:0.96;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .tally{
+    flex-shrink:0; text-align:right;
+  }
+  .tally .big{
+    font-size:clamp(20px,1.9vw,30px); font-weight:800; line-height:1;
+  }
+  .tally .small{
+    margin-top:4px;
+    font-size:10px; color:rgba(255,255,255,0.8);
+    letter-spacing:0.08em; text-transform:uppercase;
+  }
+  .updated{
+    flex-shrink:0; font-size:10px; color:rgba(255,255,255,0.7);
+    letter-spacing:0.06em; text-transform:uppercase;
+  }
+
+  @media (max-width: 1100px){
+    .board[data-view="columns"]{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+    .viewbar{ position:static; grid-column:1/-1; justify-self:center; transform:none; justify-content:center; margin-top:8px; opacity:1; box-shadow:none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img class="logo logo-left" src="logo-sheridan.png" alt="Sheridan">
+  <div class="header-main">
+    <div class="wordmark">
+      <span class="tag">Idea Wall</span>
+    </div>
+    <h1>How might Ontario&rsquo;s colleges power growth over the next ten years?</h1>
+    <div class="subtitle">Add your idea &middot; connect it to others &middot; watch the wall take shape</div>
+  </div>
+  <img class="logo logo-right" src="logo-apple-distinguished-school.png" alt="Apple Distinguished School">
+
+  <div class="viewbar" id="viewbar">
+    <button class="vbtn" type="button" data-view="columns">Areas<span class="k">1</span></button>
+    <button class="vbtn" type="button" data-view="recent">Newest<span class="k">2</span></button>
+    <button class="vbtn" type="button" data-view="top">Most liked<span class="k">3</span></button>
+    <span class="vsep"></span>
+    <button class="vbtn" type="button" id="stackBtn">Stacked<span class="k">S</span></button>
+    <button class="vbtn" type="button" id="rotateBtn">Auto<span class="k">A</span></button>
+  </div>
+</header>
+
+<div class="board" id="board" data-view="columns"></div>
+
+<div class="toast" id="toast"></div>
+
+<footer>
+  <figure class="qr">
+    <img src="qr-code.png" alt="Scan to add your idea" onerror="this.closest('figure').style.display='none'">
+    <figcaption>Scan to add<br>your idea</figcaption>
+  </figure>
+  <div class="highlights">
+    <div class="h-label">Emerging Themes</div>
+    <div class="h-text" id="highlightText">Waiting for the first ideas&hellip;</div>
+  </div>
+  <div class="tally">
+    <div class="big" id="tallyBig">0</div>
+    <div class="small" id="tallySmall">ideas so far</div>
+  </div>
+  <div class="updated" id="updated"></div>
+</footer>
+
+<script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
+
+// How often to re-check the feed files for changes, in seconds.
+const CHECK_SECONDS = 4;
+
+// Files written by build_idea_wall_feed.py, in this same folder.
+const FEED_FILE       = "idea-wall-feed.js";
+const HIGHLIGHTS_FILE = "wall-highlights.js";
+
+// Where build_idea_wall_feed.py's local save server listens.
+const SERVER_BASE = "http://127.0.0.1:8791";
+
+// Auto-rotate: how long each view holds before the wall moves to the next.
+const ROTATE_SECONDS = 45;
+
+// Views the auto-rotation cycles through, in order.
+const ROTATION = ["columns", "recent", "top"];
+
+// Show the "Other Ideas" column in the Areas view. Ideas filed there still
+// appear in the Newest and Most-liked views either way. Toggle live with O.
+let SHOW_OTHER = true;
+
+/* ============================================================
+   Display engine
+
+   Three views over the same feed:
+     columns — one column per opportunity area (drag to recategorize)
+     recent  — every idea, newest first, filling the whole wall
+     top     — every idea, most-liked first, the leaders enlarged
+   plus a stacked/unstacked toggle that applies to all three.
+
+   The current view lives in the URL hash, so the periodic
+   reload that picks up new ideas does not throw it away.
+   ============================================================ */
+
+const boardEl     = document.getElementById('board');
+const highlightEl = document.getElementById('highlightText');
+const updatedEl   = document.getElementById('updated');
+const toastEl     = document.getElementById('toast');
+const viewbarEl   = document.getElementById('viewbar');
+const tallyBigEl  = document.getElementById('tallyBig');
+const tallySmallEl= document.getElementById('tallySmall');
+
+let signature = "";
+let highlightIdx = 0;
+let suppressReloadUntil = 0;
+let rotateTimer = null;
+
+/* ---------------- view state (kept in the URL hash) ---------------- */
+
+function readState(){
+  const h = new URLSearchParams((location.hash || "").replace(/^#/, ""));
+  const view = ROTATION.includes(h.get("v")) ? h.get("v") : "columns";
+  return {
+    view: view,
+    stacked: h.get("s") !== "0",
+    rotate:  h.get("r") === "1",
+    other:   h.get("o") !== "0"
+  };
+}
+
+function writeState(patch){
+  const s = Object.assign(readState(), patch);
+  const h = new URLSearchParams();
+  h.set("v", s.view);
+  h.set("s", s.stacked ? "1" : "0");
+  h.set("r", s.rotate ? "1" : "0");
+  h.set("o", s.other ? "1" : "0");
+  // replaceState avoids piling up history entries on a kiosk screen
+  history.replaceState(null, "", "#" + h.toString());
+  return s;
+}
+
+function setView(view, fromRotation){
+  const s = writeState({ view: view });
+  if (!fromRotation) restartRotation(s);
+  render();
+  wakeViewbar();
+}
+
+/* ---------------- feed helpers ---------------- */
+
+function cleanFeed(){
+  return Array.isArray(window.IDEA_WALL) ? window.IDEA_WALL : [];
+}
+
+function feedSignature(columns){
+  return columns.map(c => c.key + ":" + c.total + ":" +
+      c.cards.map(s => s.id + "@" + s.votes + "[" +
+        s.members.map(m => m.id + "#" + m.votes).join(",") + "]").join(";"))
+    .join("|");
+}
+
+// Every stack in the feed, tagged with the area it belongs to.
+function allStacks(columns){
+  const out = [];
+  columns.forEach(col => {
+    (col.cards || []).forEach((stack, i) => {
+      out.push({
+        stack: stack,
+        theme: col.key,
+        label: col.label,
+        order: i,          // position within its column: newest first
+        votes: (stack.members || []).reduce((t, m) => t + (m.votes || 0), 0),
+        size:  (stack.members || []).length
+      });
+    });
+  });
+  return out;
+}
+
+// Unstacked: one entry per idea, each looking like a stack of one.
+function explode(entries){
+  const out = [];
+  entries.forEach(e => {
+    (e.stack.members || []).forEach(m => {
+      out.push({
+        stack: { id: m.id, votes: m.votes || 0, members: [m] },
+        theme: e.theme, label: e.label, order: e.order,
+        votes: m.votes || 0, size: 1
+      });
+    });
+  });
+  return out;
+}
+
+function escapeHtml(s){
+  return (s || "").replace(/[&<>"']/g, m => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  }[m]));
+}
+
+function showToast(message, isError){
+  toastEl.textContent = message;
+  toastEl.classList.toggle('error', !!isError);
+  toastEl.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toastEl.classList.remove('show'), 2600);
+}
+
+/* ---------------- note rendering ---------------- */
+
+function renderMember(m, isLead){
+  const likeClass = isLead ? 'like-btn' : 'like-btn small';
+  const likeBtn = '<button class="' + likeClass + '" type="button" draggable="false" data-like-id="' +
+    escapeHtml(m.id) + '"><span class="arrow">&#9650;</span><span class="like-count">' +
+    (m.votes || 0) + '</span></button>';
+
+  if (isLead){
+    return (
+      (m.moved ? '<span class="moved-dot" title="Manually recategorized"></span>' : '') +
+      '<span class="idea">' + escapeHtml(m.idea) + '</span>' +
+      (m.from ? '<span class="from">' + escapeHtml(m.from) + '</span>' : '') +
+      '<div class="note-actions">' + likeBtn + '</div>'
+    );
+  }
+  return (
+    '<div class="stack-extra-row" data-id="' + escapeHtml(m.id) + '">' +
+      '<span class="idea">' + escapeHtml(m.idea) + '</span>' +
+      (m.from ? '<span class="from">' + escapeHtml(m.from) + '</span>' : '') +
+      likeBtn +
+    '</div>'
+  );
+}
+
+// entry = {stack, theme, label}. opts.showArea adds the area chip,
+// opts.rank adds a rank badge, opts.draggable allows recategorizing.
+function renderNote(entry, opts){
+  opts = opts || {};
+  const stack = entry.stack;
+  const lead = stack.members[0];
+  const extra = stack.members.slice(1);
+  const stackedClass = extra.length > 0 ? ' stacked' : '';
+  const rankedClass = opts.rank ? ' ranked' : '';
+
+  const toggle = extra.length > 0
+    ? '<button class="stack-toggle" type="button" draggable="false">+' + extra.length +
+      (extra.length === 1 ? ' similar idea &#9662;' : ' similar ideas &#9662;') + '</button>'
+    : '';
+  const extraHtml = extra.length > 0
+    ? '<div class="stack-extra" hidden>' + extra.map(m => renderMember(m, false)).join('') + '</div>'
+    : '';
+  const rank = opts.rank ? '<span class="rank">' + opts.rank + '</span>' : '';
+  const area = '<span class="area">' + escapeHtml(entry.label) + '</span>';
+
+  return (
+    '<div class="note' + stackedClass + rankedClass + '"' +
+      ' data-theme="' + escapeHtml(entry.theme) + '"' +
+      ' data-size="' + stack.members.length + '"' +
+      ' draggable="' + (opts.draggable ? 'true' : 'false') + '"' +
+      ' data-id="' + escapeHtml(lead.id) + '">' +
+      rank + area +
+      renderMember(lead, true).replace('</div>', toggle + '</div>') +
+      extraHtml +
+    '</div>'
+  );
+}
+
+/* ---------------- density: keep notes readable, fill the wall ---------------- */
+
+function setDensity(view, columnCount, noteCount){
+  const root = document.documentElement;
+  const vw = window.innerWidth;
+
+  if (view === "columns"){
+    root.style.setProperty('--cols', columnCount);
+    // deepest column decides the type size, so nothing is cut off
+    const fs = noteCount >= 14 ? 11 : noteCount >= 10 ? 12 : noteCount >= 6 ? 13 : 14;
+    root.style.setProperty('--note-fs', fs + 'px');
+  } else {
+    // a flowing wall: more, narrower columns as the idea count grows
+    const cols = noteCount <= 12 ? 3
+               : noteCount <= 24 ? 4
+               : noteCount <= 40 ? 5
+               : noteCount <= 64 ? 6 : 7;
+    root.style.setProperty('--mcols', Math.max(2, Math.min(cols, Math.floor(vw / 230))));
+    const fs = noteCount >= 55 ? 11.5 : noteCount >= 35 ? 12.5 : 14;
+    root.style.setProperty('--note-fs', fs + 'px');
+  }
+}
+
+/* ---------------- the three views ---------------- */
+
+function renderColumns(columns, stacked, showOther){
+  // The Other Ideas column is optional, and an empty one is never drawn —
+  // that is what used to push the board onto a second, half-height row.
+  const shown = columns.filter(c => c.key !== "other" || (showOther && (c.total || 0) > 0));
+  let deepest = 0;
+
+  const html = shown.map(col => {
+    let entries = allStacks([col]);
+    if (!stacked) entries = explode(entries);
+    deepest = Math.max(deepest, entries.length);
+
+    const notes = entries.map(e => renderNote(e, { draggable: true })).join('');
+    const hidden = col.hidden || 0;
+    const extraNote = hidden > 0
+      ? '<div class="col-empty">+ ' + hidden + (hidden === 1 ? ' earlier idea' : ' earlier ideas') + '</div>'
+      : '';
+    return (
+      '<div class="column" data-theme="' + escapeHtml(col.key) + '">' +
+        '<div class="col-head">' +
+          '<span class="swatch"></span><span class="label">' + escapeHtml(col.label) + '</span>' +
+          '<span class="count">' + col.total + (col.total === 1 ? ' idea' : ' ideas') + '</span>' +
+        '</div>' +
+        '<div class="col-body">' + (notes || '<div class="col-empty">No ideas yet</div>') + extraNote + '</div>' +
+      '</div>'
+    );
+  }).join('');
+
+  setDensity("columns", shown.length, deepest);
+  return html;
+}
+
+function renderFlow(columns, stacked, mode){
+  let entries = allStacks(columns);
+  if (!stacked) entries = explode(entries);
+
+  if (mode === "top"){
+    entries.sort((a, b) => (b.votes - a.votes) || (b.size - a.size) || (a.order - b.order));
+  } else {
+    // newest first: the feed already lists each column newest-first, so
+    // interleave the columns by position rather than by area
+    entries.sort((a, b) => (a.order - b.order) || (b.votes - a.votes));
+  }
+
+  setDensity(mode, 0, entries.length);
+
+  return entries.map((e, i) => renderNote(e, {
+    draggable: false,
+    rank: (mode === "top" && i < 3 && e.votes > 0) ? (i + 1) : null
+  })).join('');
+}
+
+/* ---------------- render ---------------- */
+
+function render(){
+  const s = readState();
+  const columns = cleanFeed();
+  const total = columns.reduce((t, c) => t + (c.total || 0), 0);
+
+  boardEl.dataset.view = s.view;
+
+  if (columns.length === 0 || total === 0){
+    boardEl.innerHTML = '<div class="col-empty" style="grid-column:1/-1;margin:auto;font-size:16px;">' +
+      'Waiting for the first idea&hellip;</div>';
+  } else if (s.view === "columns"){
+    boardEl.innerHTML = renderColumns(columns, s.stacked, s.other);
+  } else {
+    boardEl.innerHTML = renderFlow(columns, s.stacked, s.view);
+  }
+
+  // view bar state
+  viewbarEl.querySelectorAll('.vbtn[data-view]').forEach(b => {
+    b.setAttribute('aria-pressed', b.dataset.view === s.view ? 'true' : 'false');
+  });
+  const stackBtn = document.getElementById('stackBtn');
+  stackBtn.setAttribute('aria-pressed', s.stacked ? 'true' : 'false');
+  stackBtn.firstChild.textContent = s.stacked ? 'Stacked' : 'Unstacked';
+  document.getElementById('rotateBtn').setAttribute('aria-pressed', s.rotate ? 'true' : 'false');
+
+  tallyBigEl.textContent = total;
+  tallySmallEl.textContent = total === 1 ? 'idea so far' : 'ideas so far';
+
+  updatedEl.textContent = window.IDEA_WALL_UPDATED ? "Updated " + window.IDEA_WALL_UPDATED : "";
+
+  if (s.view === "columns") fitColumns(); else fitFlow();
+  attachInteractions();
+}
+
+/* Nobody scrolls a wall, and a scrollbar on a screen across an aisle is a
+   dead end. So in the Areas view a column that holds more ideas than fit
+   shows as many as fit and then CYCLES: every PAGE_SECONDS it advances to
+   the next set, wrapping around, so every idea gets its turn on screen.
+   The "+N more" chip is also a button — tap it to advance immediately.
+
+   Each column keeps its own offset in data-offset, so one column paging
+   never disturbs the others. */
+
+const PAGE_SECONDS = 14;
+let pageTimer = null;
+let pagePausedUntil = 0;
+
+function fitOneColumn(body){
+  const notes = Array.from(body.querySelectorAll('.note'));
+  const oldChip = body.querySelector('.more-chip');
+  if (oldChip) oldChip.remove();
+  if (notes.length === 0) return;
+
+  // Paging runs forward through the column and then starts over. It does not
+  // wrap mid-page: notes are laid out in DOM order, so a wrapped window would
+  // put the tail of the column above its head and read as scrambled.
+  let offset = parseInt(body.dataset.offset, 10) || 0;
+  if (offset >= notes.length) offset = 0;
+  body.dataset.offset = offset;
+
+  // start from nothing, then add notes from the offset until one overflows
+  notes.forEach(n => { n.style.display = 'none'; });
+
+  const chip = document.createElement('button');
+  chip.type = 'button';
+  chip.className = 'more-chip';
+  chip.setAttribute('draggable', 'false');
+  body.appendChild(chip);
+
+  let shown = 0;
+  for (let i = offset; i < notes.length; i++){
+    const note = notes[i];
+    note.style.display = '';
+    if (body.scrollHeight > body.clientHeight){
+      if (shown === 0){ shown = 1; break; }   // always keep at least one
+      note.style.display = 'none';
+      break;
+    }
+    shown++;
+  }
+
+  const hidden = notes.length - shown;
+  if (hidden <= 0){
+    chip.remove();
+    body.dataset.offset = 0;
+    return;
+  }
+
+  chip.textContent = '+' + hidden + ' more ↻';
+  chip.title = 'Show the next ' + Math.min(hidden, shown) + ' — this cycles on its own too';
+  chip.dataset.step = shown;
+
+  // the chip takes room of its own; give a note back if it pushed one out
+  if (body.scrollHeight > body.clientHeight && shown > 1){
+    notes[offset + shown - 1].style.display = 'none';
+    chip.textContent = '+' + (hidden + 1) + ' more ↻';
+    chip.dataset.step = shown - 1;
+  }
+
+  chip.addEventListener('mousedown', e => e.stopPropagation());
+  chip.addEventListener('click', e => {
+    e.stopPropagation();
+    advanceColumn(body);
+    pagePausedUntil = Date.now() + PAGE_SECONDS * 1000;
+  });
+}
+
+function advanceColumn(body){
+  const notes = body.querySelectorAll('.note');
+  const chip = body.querySelector('.more-chip');
+  if (!chip || notes.length === 0) return;
+  const step = parseInt(chip.dataset.step, 10) || 1;
+  const next = (parseInt(body.dataset.offset, 10) || 0) + step;
+  body.dataset.offset = next >= notes.length ? 0 : next;  // page forward, then back to the top
+  fitOneColumn(body);
+  attachInteractions();
+}
+
+function fitColumns(){
+  boardEl.querySelectorAll('.col-body').forEach(fitOneColumn);
+}
+
+function startPaging(){
+  clearInterval(pageTimer);
+  pageTimer = setInterval(() => {
+    if (boardEl.dataset.view !== 'columns') return;
+    if (Date.now() < pagePausedUntil) return;
+    boardEl.querySelectorAll('.col-body').forEach(body => {
+      if (body.querySelector('.more-chip')) advanceColumn(body);
+    });
+  }, PAGE_SECONDS * 1000);
+}
+
+/* Same idea for the flowing views: trim from the end until the last note
+   ends above the footer, so nothing is sliced in half, and say how many
+   did not fit. */
+function fitFlow(){
+  const notes = Array.from(boardEl.querySelectorAll('.note'));
+  if (notes.length === 0) return;
+
+  let hidden = 0;
+  while (boardEl.scrollHeight > boardEl.clientHeight && hidden < notes.length - 1){
+    notes[notes.length - 1 - hidden].style.display = 'none';
+    hidden++;
+  }
+  if (hidden > 0){
+    const pill = document.createElement('div');
+    pill.className = 'more-pill';
+    pill.textContent = '+' + hidden + ' more on the wall';
+    boardEl.appendChild(pill);
+    // the pill itself can tip it over the edge; drop one more note if so
+    if (boardEl.scrollHeight > boardEl.clientHeight && hidden < notes.length - 1){
+      notes[notes.length - 1 - hidden].style.display = 'none';
+    }
+  }
+}
+
+/* ---------------- interactions ---------------- */
+
+// Called again after every re-fit, so each element is wired exactly once —
+// without this guard a note re-fitted three times would register three
+// like handlers and count one tap as three.
+function attachInteractions(){
+  boardEl.querySelectorAll('.note[draggable="true"]').forEach(note => {
+    if (note.dataset.wired) return;
+    note.dataset.wired = "1";
+    note.addEventListener('dragstart', e => {
+      note.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', note.dataset.id || '');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    note.addEventListener('dragend', () => note.classList.remove('dragging'));
+  });
+
+  boardEl.querySelectorAll('.col-body').forEach(colBody => {
+    if (colBody.dataset.wired) return;
+    colBody.dataset.wired = "1";
+    colBody.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      colBody.classList.add('drag-over');
+    });
+    colBody.addEventListener('dragleave', () => colBody.classList.remove('drag-over'));
+    colBody.addEventListener('drop', e => {
+      e.preventDefault();
+      colBody.classList.remove('drag-over');
+
+      const id = e.dataTransfer.getData('text/plain');
+      const column = colBody.closest('.column');
+      const theme = column ? column.dataset.theme : null;
+      const dragged = boardEl.querySelector('.note.dragging') ||
+                       (id ? boardEl.querySelector('.note[data-id="' + CSS.escape(id) + '"]') : null);
+      if (!id || !theme || !dragged) return;
+
+      const fromColumn = dragged.closest('.column');
+      if (fromColumn && fromColumn.dataset.theme === theme) return;
+
+      const sourceBody = fromColumn ? fromColumn.querySelector('.col-body') : null;
+      const moved = parseInt(dragged.dataset.size, 10) || 1;
+
+      dragged.dataset.theme = theme;
+      colBody.insertBefore(dragged, colBody.firstChild);
+      const leftoverEmpty = colBody.querySelector('.col-empty');
+      if (leftoverEmpty && colBody.querySelectorAll('.note').length > 0) leftoverEmpty.remove();
+
+      // the note landed at the top of its new column, so show that column
+      // from the top; both columns are re-fitted, which also recounts the
+      // "+N more" chips that the move just made wrong
+      colBody.dataset.offset = 0;
+      if (sourceBody){
+        sourceBody.dataset.offset = 0;
+        bumpCount(fromColumn, -moved);
+        fitOneColumn(sourceBody);
+        if (sourceBody.querySelectorAll('.note').length === 0 &&
+            !sourceBody.querySelector('.col-empty')){
+          sourceBody.insertAdjacentHTML('beforeend', '<div class="col-empty">No ideas yet</div>');
+        }
+      }
+      bumpCount(column, moved);
+      fitOneColumn(colBody);
+      attachInteractions();
+
+      pagePausedUntil = Date.now() + PAGE_SECONDS * 1000;
+      suppressReloadUntil = Date.now() + CHECK_SECONDS * 1000 + 1500;
+
+      saveMove(id, theme);
+    });
+  });
+
+  boardEl.querySelectorAll('.like-btn').forEach(btn => {
+    if (btn.dataset.wired) return;
+    btn.dataset.wired = "1";
+    btn.addEventListener('mousedown', e => e.stopPropagation());
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = btn.dataset.likeId;
+      if (!id) return;
+      const countEl = btn.querySelector('.like-count');
+      const current = parseInt(countEl.textContent, 10) || 0;
+      countEl.textContent = current + 1;
+      btn.disabled = true;
+      setTimeout(() => { btn.disabled = false; }, 400);
+      suppressReloadUntil = Date.now() + CHECK_SECONDS * 1000 + 1500;
+      saveLike(id, () => { countEl.textContent = current; });
+    });
+  });
+
+  boardEl.querySelectorAll('.stack-toggle').forEach(btn => {
+    if (btn.dataset.wired) return;
+    btn.dataset.wired = "1";
+    btn.addEventListener('mousedown', e => e.stopPropagation());
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const note = btn.closest('.note');
+      const extra = note ? note.querySelector('.stack-extra') : null;
+      if (!extra) return;
+      if (!extra.hasAttribute('hidden')){
+        extra.setAttribute('hidden', '');
+        btn.innerHTML = btn.innerHTML.replace('&#9652;', '&#9662;');
+      } else {
+        extra.removeAttribute('hidden');
+        btn.innerHTML = btn.innerHTML.replace('&#9662;', '&#9652;');
+      }
+    });
+  });
+}
+
+// Keep a column's "N ideas" heading honest after a drag, without waiting
+// for the next feed rebuild.
+function bumpCount(column, delta){
+  if (!column) return;
+  const el = column.querySelector('.col-head .count');
+  if (!el) return;
+  const now = Math.max(0, (parseInt(el.textContent, 10) || 0) + delta);
+  el.textContent = now + (now === 1 ? ' idea' : ' ideas');
+}
+
+function saveMove(id, theme){
+  fetch(SERVER_BASE + "/move", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, theme })
+  })
+    .then(res => { if (!res.ok) throw new Error('save failed'); showToast('Moved — saved to the wall', false); })
+    .catch(() => showToast('Moved on screen, but not saved (is build_idea_wall_feed.py running?)', true));
+}
+
+function saveLike(id, onFail){
+  fetch(SERVER_BASE + "/like", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  })
+    .then(res => { if (!res.ok) throw new Error('save failed'); })
+    .catch(() => { onFail(); showToast('Like not saved (is build_idea_wall_feed.py running?)', true); });
+}
+
+/* ---------------- view bar, keyboard, rotation ---------------- */
+
+function wakeViewbar(){
+  viewbarEl.classList.add('awake');
+  clearTimeout(wakeViewbar._t);
+  wakeViewbar._t = setTimeout(() => viewbarEl.classList.remove('awake'), 4000);
+}
+
+function restartRotation(s){
+  clearInterval(rotateTimer);
+  rotateTimer = null;
+  if (!s.rotate) return;
+  rotateTimer = setInterval(() => {
+    const cur = readState().view;
+    const next = ROTATION[(ROTATION.indexOf(cur) + 1) % ROTATION.length];
+    writeState({ view: next });
+    render();
+  }, ROTATE_SECONDS * 1000);
+}
+
+viewbarEl.querySelectorAll('.vbtn[data-view]').forEach(btn => {
+  btn.addEventListener('click', () => setView(btn.dataset.view));
+});
+document.getElementById('stackBtn').addEventListener('click', () => {
+  writeState({ stacked: !readState().stacked }); render(); wakeViewbar();
+});
+document.getElementById('rotateBtn').addEventListener('click', () => {
+  const s = writeState({ rotate: !readState().rotate });
+  restartRotation(s); render(); wakeViewbar();
+  showToast(s.rotate ? 'Auto-rotating views every ' + ROTATE_SECONDS + 's' : 'Auto-rotate off', false);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === '1') setView('columns');
+  else if (k === '2') setView('recent');
+  else if (k === '3') setView('top');
+  else if (k === 's'){ writeState({ stacked: !readState().stacked }); render(); wakeViewbar(); }
+  else if (k === 'o'){
+    const s = writeState({ other: !readState().other });
+    render(); wakeViewbar();
+    showToast(s.other ? 'Showing Other Ideas' : 'Other Ideas hidden (still counted)', false);
+  }
+  else if (k === 'a'){
+    const s = writeState({ rotate: !readState().rotate });
+    restartRotation(s); render(); wakeViewbar();
+    showToast(s.rotate ? 'Auto-rotating views every ' + ROTATE_SECONDS + 's' : 'Auto-rotate off', false);
+  }
+  else if (k === 'arrowright'){
+    const cur = readState().view;
+    setView(ROTATION[(ROTATION.indexOf(cur) + 1) % ROTATION.length]);
+  }
+  else if (k === 'arrowleft'){
+    const cur = readState().view;
+    setView(ROTATION[(ROTATION.indexOf(cur) - 1 + ROTATION.length) % ROTATION.length]);
+  }
+});
+
+window.addEventListener('resize', () => render());
+// so a facilitator can also drive the wall by editing the address bar
+window.addEventListener('hashchange', () => { restartRotation(readState()); render(); });
+
+/* ---------------- feed polling ---------------- */
+
+function rotateHighlight(){
+  const list = Array.isArray(window.WALL_HIGHLIGHTS) ? window.WALL_HIGHLIGHTS : [];
+  if (list.length === 0){ highlightEl.textContent = "Waiting for the first ideas…"; return; }
+  highlightIdx = highlightIdx % list.length;
+  highlightEl.textContent = list[highlightIdx];
+  highlightIdx++;
+}
+
+function loadScript(src, onDone){
+  const el = document.createElement('script');
+  el.src = src + "?t=" + Date.now();
+  el.onload = function(){ el.remove(); onDone(true); };
+  el.onerror = function(){ el.remove(); onDone(false); };
+  document.head.appendChild(el);
+}
+
+function checkFeed(){
+  loadScript(FEED_FILE, function(){
+    const sig = feedSignature(cleanFeed());
+    if (sig !== signature){
+      if (Date.now() < suppressReloadUntil) return;
+      location.reload(); // the hash carries the current view across the reload
+    }
+  });
+}
+
+function start(){
+  const s = writeState({ other: SHOW_OTHER && readState().other });
+  signature = feedSignature(cleanFeed());
+  render();
+  restartRotation(s);
+  startPaging();
+  loadScript(HIGHLIGHTS_FILE, function(){
+    rotateHighlight();
+    setInterval(rotateHighlight, 8000);
+  });
+  setInterval(checkFeed, CHECK_SECONDS * 1000);
+}
+
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) checkFeed(); });
+
+loadScript(FEED_FILE, function(ok){
+  if (!ok){
+    boardEl.innerHTML = '<div style="grid-column:1/-1;margin:auto;text-align:center;color:var(--muted);">' +
+      'Idea wall feed not found&hellip;</div>';
+    setTimeout(() => location.reload(), 5000);
+    return;
+  }
+  start();
+});
+</script>
+
+</body>
+</html>

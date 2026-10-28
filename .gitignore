@@ -1,0 +1,13 @@
+.DS_Store
+.env
+.env.*
+*.local
+node_modules/
+backups/
+
+# Private notes with passwords: never commit
+Supabase Details/
+
+# Python cache from the early test script
+__pycache__/
+*.pyc

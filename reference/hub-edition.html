@@ -1,0 +1,899 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Live Idea Wall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --wall:#DCE3E9; --surface:#F6F8FA; --ink:#15202A; --ink-2:#4A5967; --rule:#B4C1CB;
+  --accent:#0C5C90; --accent-ink:#FFFFFF; --note-ink:#15202A; --scrim:rgba(12,20,28,.55);
+  --shadow:0 .12em .5em rgba(21,32,42,.20);
+  --display:"Bricolage Grotesque","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --u:max(min(1vw,1.78vh),7px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --wall:#17202A; --surface:#212C37; --ink:#E7EDF2; --ink-2:#A3B2BF; --rule:#384653;
+    --accent:#5CB3EA; --accent-ink:#0A1D2B; --scrim:rgba(0,0,0,.6); --shadow:0 .12em .6em rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --wall:#17202A; --surface:#212C37; --ink:#E7EDF2; --ink-2:#A3B2BF; --rule:#384653;
+  --accent:#5CB3EA; --accent-ink:#0A1D2B; --scrim:rgba(0,0,0,.6); --shadow:0 .12em .6em rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;height:100%;background:var(--wall);color:var(--ink);font-family:var(--body);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,label:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+
+#app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:calc(var(--u)*1.1);padding:calc(var(--u)*1.5) calc(var(--u)*1.8) calc(var(--u)*1.1)}
+
+/* Header */
+header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:calc(var(--u)*3)}
+.facil-strip{grid-column:1/-1;display:flex;align-items:center;gap:1em;background:var(--ink);color:var(--wall);border-radius:.4em;padding:.45em .9em;font-size:max(14px,calc(var(--u)*1));font-weight:700}
+.facil-strip span{flex:1}
+.facil-strip button{background:var(--wall);color:var(--ink);border:0;border-radius:.35em;padding:.3em .8em;font-weight:700}
+h1{font-family:var(--display);font-weight:800;font-size:max(26px,calc(var(--u)*3.5));line-height:1.02;letter-spacing:-.015em;margin:0;max-width:24ch;text-wrap:balance}
+.lede{margin:.55em 0 0;font-size:max(15px,calc(var(--u)*1.25));color:var(--ink-2)}
+.stats{display:flex;gap:calc(var(--u)*2.4);text-align:right}
+.stat b{display:block;font-family:var(--display);font-weight:800;font-size:max(30px,calc(var(--u)*4.6));line-height:.9;font-variant-numeric:tabular-nums}
+.stat small{display:block;margin-top:.35em;font-size:max(13px,calc(var(--u)*1.05));color:var(--ink-2)}
+
+/* Board */
+#board{display:grid;grid-template-columns:repeat(var(--cols,7),minmax(0,1fr));gap:calc(var(--u)*.9);min-height:0}
+.col{--c:#ccc;display:flex;flex-direction:column;min-height:0;border-radius:calc(var(--u)*.7);background:color-mix(in srgb,var(--c) 24%,var(--wall));border-top:calc(var(--u)*.55) solid var(--c);transition:box-shadow .15s}
+.col.drop{box-shadow:0 0 0 4px var(--accent) inset}
+.col-head{display:flex;flex-direction:column;gap:.15em;padding:calc(var(--u)*.75) calc(var(--u)*.9) calc(var(--u)*.6)}
+.col-head h2{margin:0;font-family:var(--display);font-weight:800;font-size:max(15px,calc(var(--u)*1.38));line-height:1.05;letter-spacing:-.005em}
+.col-head span{font-size:max(13px,calc(var(--u)*1.1));color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.list{position:relative;flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:calc(var(--u)*.7);padding:calc(var(--u)*.2) calc(var(--u)*.75) calc(var(--u)*.75)}
+.empty-col{color:var(--ink-2);font-size:max(13px,calc(var(--u)*1.05));padding:.4em .2em;line-height:1.35}
+.more{position:absolute;left:calc(var(--u)*.75);right:calc(var(--u)*.75);bottom:calc(var(--u)*.6);text-align:center;font-weight:700;font-size:max(13px,calc(var(--u)*1.05));background:var(--surface);color:var(--ink);border-radius:999px;padding:.35em .6em;box-shadow:var(--shadow)}
+
+/* Notes */
+.note{--nf:max(13px,calc(var(--u)*1.12));position:relative;flex:none;background:var(--c);color:var(--note-ink);border-radius:calc(var(--u)*.35);padding:calc(var(--u)*.8) calc(var(--u)*.85) calc(var(--u)*.65);font-size:var(--nf);line-height:1.28;box-shadow:var(--shadow);touch-action:none;cursor:grab}
+.note.stacked{box-shadow:var(--shadow),.32em .32em 0 -.05em color-mix(in srgb,var(--c) 78%,#15202A),.62em .62em 0 -.1em color-mix(in srgb,var(--c) 62%,#15202A);margin-right:.62em;margin-bottom:.5em}
+.note .txt{margin:0;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.note .by{margin:.4em 0 0;font-size:.78em;font-weight:700;opacity:.82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note .meta{display:flex;justify-content:space-between;align-items:center;gap:.5em;margin-top:.5em;font-size:.72em}
+.note .tag{opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.depth{position:absolute;top:-.55em;right:-.55em;background:var(--note-ink);color:#fff;font-family:var(--display);font-weight:800;font-size:1.05em;line-height:1;padding:.32em .45em;border-radius:999px;box-shadow:var(--shadow)}
+.dots{display:inline-flex;align-items:center;gap:.22em;min-height:.6em}
+.dots i{width:.55em;height:.55em;border-radius:50%;background:var(--note-ink);display:block}
+.dots em{font-style:normal;font-weight:700;margin-left:.15em}
+.note.arrive{animation:arrive 1.1s cubic-bezier(.2,.9,.3,1.2) both;outline:.25em solid var(--note-ink);outline-offset:.18em}
+.note.lifted{opacity:.3}
+.note.ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;opacity:.95;transform-origin:center;box-shadow:0 1em 2.5em rgba(0,0,0,.35);rotate:-2deg;cursor:grabbing}
+.note.target{outline:.25em dashed var(--note-ink);outline-offset:.15em}
+@keyframes arrive{0%{transform:translateY(-1.2em) scale(.85);opacity:0}100%{transform:none;opacity:1}}
+body.dense1 .note{--nf:max(12px,calc(var(--u)*.98))} body.dense1 .note .txt{-webkit-line-clamp:4}
+body.dense2 .note{--nf:max(11px,calc(var(--u)*.86));padding:calc(var(--u)*.55) calc(var(--u)*.65) calc(var(--u)*.5)} body.dense2 .note .txt{-webkit-line-clamp:3} body.dense2 .note .by{display:none}
+
+/* Footer */
+footer{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:calc(var(--u)*2)}
+.ticker{display:flex;align-items:baseline;gap:.9em;min-width:0}
+.ticker small{flex:none;font-size:max(12px,calc(var(--u)*.95));color:var(--ink-2);font-weight:700}
+.ticker p{margin:0;font-family:var(--display);font-weight:600;font-size:max(16px,calc(var(--u)*1.55));line-height:1.15;transition:opacity .5s;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ticker p.fade{opacity:0}
+.actions{display:flex;align-items:center;gap:calc(var(--u)*.8)}
+.btn{border:0;border-radius:calc(var(--u)*.5);min-height:max(46px,calc(var(--u)*3.6));padding:0 1.1em;font-weight:700;font-size:max(15px,calc(var(--u)*1.2));background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);font-size:max(17px,calc(var(--u)*1.55));padding:0 1.5em}
+.btn.quiet{background:transparent;box-shadow:none;border:2px solid var(--rule)}
+.btn:disabled{opacity:.45;cursor:default}
+.iconbtn{border:0;background:transparent;color:var(--ink-2);width:max(40px,calc(var(--u)*3));height:max(40px,calc(var(--u)*3));border-radius:50%;display:grid;place-items:center;opacity:.6}
+.iconbtn svg{width:55%;height:55%}
+.sync{font-size:max(11px,calc(var(--u)*.85));color:var(--ink-2);white-space:nowrap}
+
+/* Summary state */
+#summary{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:calc(var(--u)*1.4);min-height:0}
+.synth{background:var(--surface);border-radius:calc(var(--u)*.8);padding:calc(var(--u)*2) calc(var(--u)*2.4);overflow:hidden;box-shadow:var(--shadow)}
+.synth h2,.top h2{margin:0 0 .6em;font-family:var(--display);font-weight:800;font-size:max(18px,calc(var(--u)*1.7))}
+.synth p{margin:0 0 .7em;font-size:max(17px,calc(var(--u)*1.75));line-height:1.38;max-width:52ch}
+.synth p.placeholder{color:var(--ink-2);font-style:italic}
+.top{display:flex;flex-direction:column;min-height:0;overflow:hidden}.top-list{flex:1}
+.top .note{cursor:default}
+.tiles{grid-column:1/-1;display:grid;grid-template-columns:repeat(var(--cols,6),minmax(0,1fr));gap:calc(var(--u)*.9)}
+.tile{--c:#ccc;background:color-mix(in srgb,var(--c) 30%,var(--wall));border-top:calc(var(--u)*.5) solid var(--c);border-radius:calc(var(--u)*.6);padding:calc(var(--u)*.8) calc(var(--u)*.9)}
+.tile h3{margin:0;font-family:var(--display);font-weight:800;font-size:max(14px,calc(var(--u)*1.2))}
+.tile small{display:block;color:var(--ink-2);font-size:max(12px,calc(var(--u)*.95));margin:.2em 0 .5em}
+.tile p{margin:0;font-size:max(13px,calc(var(--u)*1.05));line-height:1.3;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+
+/* Sheets */
+.scrim{position:fixed;inset:0;z-index:40;background:var(--scrim);display:grid;place-items:center;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px)}
+.sheet{width:min(94vw,max(560px,48vw));max-height:100%;overflow:auto;background:var(--surface);color:var(--ink);border-radius:calc(var(--u)*.9);padding:calc(var(--u)*2) calc(var(--u)*2.2);box-shadow:0 1.5em 4em rgba(0,0,0,.35);font-size:max(16px,calc(var(--u)*1.2));-webkit-user-select:text;user-select:text;position:relative}
+.sheet.wide{width:min(96vw,max(640px,60vw))}
+.sheet h2{margin:0 0 .7em;font-family:var(--display);font-weight:800;font-size:1.7em;line-height:1.1}
+.sheet h3{margin:1.4em 0 .5em;font-size:1em}
+.sheet p.help{margin:.3em 0 0;color:var(--ink-2);font-size:.85em;line-height:1.4}
+.sheet textarea,.sheet input[type=text],.sheet input[type=password],.sheet input[type=search]{width:100%;font:inherit;color:var(--ink);background:var(--wall);border:2px solid var(--rule);border-radius:.4em;padding:.6em .7em}
+.sheet textarea{min-height:5.5em;resize:vertical;line-height:1.35}
+.close{position:absolute;top:.6em;right:.6em}
+.row{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;margin-top:1em}
+.row.end{justify-content:flex-end}
+.chips{display:flex;flex-wrap:wrap;gap:.5em;margin-top:.5em}
+.chip{--c:#ccc;border:2px solid transparent;background:color-mix(in srgb,var(--c) 55%,var(--surface));color:var(--ink);border-radius:999px;padding:.5em 1em;font-weight:700;min-height:2.6em}
+.chip[aria-pressed="true"]{background:var(--c);color:var(--note-ink);border-color:var(--note-ink)}
+.counter{font-size:.8em;color:var(--ink-2);text-align:right;margin-top:.25em}
+.counter.over{color:#B3261E;font-weight:700}
+.quote{border-left:.3em solid var(--c,#999);padding:.3em .8em;margin:0 0 1em;color:var(--ink-2)}
+.detail-strip{height:.5em;border-radius:.3em;background:var(--c);margin:-.4em 2.6em 1em 0}
+.detail-text{font-size:1.45em;line-height:1.3;margin:0}
+.members{list-style:none;padding:0;margin:.4em 0 0;display:grid;gap:.5em}
+.members li{background:var(--wall);border-radius:.4em;padding:.6em .8em;display:flex;gap:.8em;justify-content:space-between;align-items:center}
+.members li span{flex:1}
+.members small{display:block;color:var(--ink-2);margin-top:.2em}
+.results{list-style:none;padding:0;margin:1em 0 0;display:grid;gap:.45em}
+.results button{width:100%;text-align:left;border:0;background:var(--wall);border-left:.4em solid var(--c);border-radius:.35em;padding:.6em .8em}
+.results small{display:block;color:var(--ink-2);margin-top:.15em}
+.panel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22em),1fr));gap:0 2em}
+.switch{display:flex;align-items:center;gap:.6em;margin-top:.6em}
+.switch input{width:1.4em;height:1.4em}
+.filebtn{position:relative;overflow:hidden;display:inline-grid;place-items:center}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.msg{margin-top:.6em;font-size:.85em;color:var(--ink-2);min-height:1.2em}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 6vh);translate:-50% 0;z-index:60;background:var(--ink);color:var(--wall);padding:.8em 1.3em;border-radius:.6em;font-weight:700;font-size:max(16px,calc(var(--u)*1.4));box-shadow:0 1em 3em rgba(0,0,0,.35);max-width:90vw;text-align:center}
+.pin{letter-spacing:.4em;font-size:1.6em!important;text-align:center}
+
+@media (max-width:760px){
+  body{overflow:auto}
+  #app{height:auto;min-height:100%}
+  header{grid-template-columns:1fr}
+  .stats{text-align:left}
+  #board{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:78vw;overflow-x:auto;height:72vh}
+  footer{grid-template-columns:1fr}
+  #summary{grid-template-columns:1fr}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (prefers-reduced-motion:reduce){.note.arrive{animation:none}.ticker p{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="facil-strip" id="facilStrip" hidden>
+      <span>Facilitator mode. Drag one note onto another to stack them; tap a note to hide, split or move it.</span>
+      <button id="openPanel">Facilitator panel</button>
+      <button id="exitFacil">Exit</button>
+    </div>
+    <div>
+      <h1>How might Ontario’s colleges power growth over the next ten years?</h1>
+      <p class="lede" id="lede">Add your idea: scan the code or tap “Add your idea”. Tap any note to support it.</p>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="statTotal">0</b><small>ideas on the wall</small></div>
+      <div class="stat" id="statTodayWrap" hidden><b id="statToday">0</b><small>added today</small></div>
+    </div>
+  </header>
+
+  <main id="board" aria-label="Ideas by opportunity area"></main>
+  <main id="summary" hidden aria-label="Closing summary"></main>
+
+  <footer>
+    <div class="ticker" aria-live="polite"><small>Facilitators’ notes</small><p id="ticker"></p></div>
+    <div class="actions">
+      <span class="sync" id="sync">Saved on this screen</span>
+      <button class="iconbtn" id="fsBtn" aria-label="Full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button class="iconbtn" id="gearBtn" aria-label="Facilitator controls"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
+      <button class="btn" id="findBtn">Find my idea</button>
+      <button class="btn primary" id="addBtn">Add your idea</button>
+    </div>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+/* ---------- Configuration ---------- */
+const AREAS = [
+  {key:"talent",      name:"Talent",                  short:"Talent",       color:"#F4C542"},
+  {key:"innovation",  name:"Innovation",              short:"Innovation",   color:"#7DC7E2"},
+  {key:"productivity",name:"Productivity",            short:"Productivity", color:"#9AD47C"},
+  {key:"community",   name:"Community Resilience",    short:"Community",    color:"#F3A08D"},
+  {key:"industry",    name:"Industry Transformation", short:"Industry",     color:"#B9A7EF"},
+  {key:"students",    name:"Student Success",         short:"Students",     color:"#F2ACCF"},
+  {key:"other",       name:"Something else",          short:"Other",        color:"#C7D0D8"}
+];
+const AREA = Object.fromEntries(AREAS.map(a => [a.key, a]));
+const LS_KEY = "ideawall:hub:v1";
+const FRESH_MS = 120000;       // new ideas sit at the top of their column for 2 minutes
+const VOTE_COOLDOWN = 30000;   // one support per idea per screen every 30 s
+const FACIL_IDLE = 10 * 60000; // facilitator mode closes itself after 10 idle minutes
+const DEFAULT_NOTES = [
+  "Every idea on this wall came from someone who stopped at this booth.",
+  "Tap any note to read it in full, support it, or build on it.",
+  "Think an idea belongs somewhere else? Drag it to that area."
+];
+
+/* ---------- State ---------- */
+const S = { ideas:{}, settings:{ notes:DEFAULT_NOTES.slice(), summary:"", showOther:true, view:"wall", pin:"1967" } };
+let pending = new Set();          // ids changed locally and not yet confirmed in the shared store
+let db = null, dbLive = false, firstSnap = true;
+let facil = false, lastTouch = Date.now();
+const fresh = new Map();          // id -> time it appeared on this screen
+const lastVote = {};
+let drag = null, renderQueued = false;
+
+function load(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+    if(raw){ S.ideas = raw.ideas || {}; Object.assign(S.settings, raw.settings || {}); pending = new Set(raw.pending || []); }
+  }catch(e){}
+}
+function save(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify({ideas:S.ideas, settings:S.settings, pending:[...pending]})); }catch(e){}
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------- Shared store (claude.ai db) with local fallback ---------- */
+const queues = {};
+function dbWrite(key, fn){
+  queues[key] = (queues[key] || Promise.resolve()).then(fn).catch(() => {});
+  return queues[key];
+}
+function cleanIdea(i){
+  return {text:i.text, area:i.area, name:i.name||"", ts:i.ts, votes:i.votes||0, hidden:!!i.hidden,
+          parent:i.parent||null, solo:!!i.solo, sample:!!i.sample, src:i.src||"hub"};
+}
+function pushIdea(id){
+  pending.add(id); save();
+  if(!db || !dbLive) return;
+  dbWrite(id, async () => {
+    const i = S.ideas[id];
+    if(i) await db.collection("ideas").doc(id).set(cleanIdea(i));
+    else await db.collection("ideas").doc(id).delete();
+    pending.delete(id); save();
+  });
+}
+function putIdea(idea){ S.ideas[idea.id] = idea; fresh.set(idea.id, Date.now()); pushIdea(idea.id); render(); }
+function patchIdea(id, patch){ if(!S.ideas[id]) return; Object.assign(S.ideas[id], patch); pushIdea(id); render(); }
+function removeIdea(id){ delete S.ideas[id]; pushIdea(id); render(); }
+
+let settingsTimer = null;
+function saveSettings(){
+  save(); render();
+  if(!db || !dbLive) return;
+  clearTimeout(settingsTimer);
+  settingsTimer = setTimeout(() => dbWrite("__settings", () => db.doc("wall/settings").set({...S.settings})), 500);
+}
+
+function setSync(text){ $("#sync").textContent = text; }
+
+async function connectStore(){
+  if(!window.claude || typeof window.claude.use !== "function") return;
+  let d = null;
+  try{ d = await window.claude.use("db"); }catch(e){ d = null; }
+  if(!d) return;
+  db = d;
+  db.collection("ideas").onSnapshot(snap => {
+    const remote = {};
+    snap.docs.forEach(doc => { if(doc.exists) remote[doc.id] = {...doc.data(), id:doc.id}; });
+    if(firstSnap){
+      // Anything created on this screen before the shared wall connected gets uploaded.
+      for(const id in S.ideas) if(!remote[id]) pending.add(id);
+    } else {
+      for(const id in remote) if(!S.ideas[id]) fresh.set(id, Date.now());
+    }
+    for(const id of pending){ if(S.ideas[id]) remote[id] = S.ideas[id]; else delete remote[id]; }
+    S.ideas = remote;
+    const wasFirst = firstSnap; firstSnap = false; dbLive = true;
+    save(); setSync("Live: shared wall"); render();
+    if(wasFirst) for(const id of [...pending]) pushIdea(id);
+  }, () => { dbLive = false; setSync("Saved on this screen"); });
+  db.doc("wall/settings").onSnapshot(s => {
+    if(s.exists){ Object.assign(S.settings, s.data()); save(); render(); }
+  }, () => {});
+}
+
+/* ---------- Clustering ---------- */
+const STOP = new Set(("the and for with that this from into more their they them have will about colleges college ontario should could would than then what which where while also just like make need needs most other over such very each every through across between being been were your ours want more help create build year years next ten growth power").split(" "));
+function toks(t){
+  return new Set(String(t||"").toLowerCase().replace(/[’']/g,"").split(/[^a-z0-9]+/)
+    .filter(w => w.length > 3 && !STOP.has(w)).map(w => w.replace(/(able|ing|ed|es|s)$/,"")));
+}
+function sim(a,b){
+  let n = 0; for(const w of a) if(b.has(w)) n++;
+  if(n < 2) return 0;
+  const overlap = n / Math.min(a.size, b.size), jac = n / (a.size + b.size - n);
+  return (n >= 3 && overlap >= 0.5) || jac >= 0.4;
+}
+function buildStacks(){
+  const vis = Object.values(S.ideas).filter(i => !i.hidden).sort((a,b) => a.ts - b.ts);
+  const stacks = new Map(), rootOf = {}, tk = {};
+  for(const i of vis.filter(i => !i.parent)){
+    tk[i.id] = toks(i.text);
+    let hit = null;
+    if(!i.solo) for(const s of stacks.values()){
+      if(s.area === i.area && sim(tk[i.id], tk[s.root.id])){ hit = s; break; }
+    }
+    if(hit){ hit.members.push(i); rootOf[i.id] = hit.root.id; }
+    else { stacks.set(i.id, {root:i, area:i.area, members:[i]}); rootOf[i.id] = i.id; }
+  }
+  let rest = vis.filter(i => i.parent), moved = true;
+  while(rest.length && moved){
+    moved = false; const next = [];
+    for(const i of rest){
+      const r = rootOf[i.parent];
+      if(r){ stacks.get(r).members.push(i); rootOf[i.id] = r; moved = true; } else next.push(i);
+    }
+    rest = next;
+  }
+  for(const i of rest){ stacks.set(i.id, {root:i, area:i.area, members:[i]}); rootOf[i.id] = i.id; }
+  const now = Date.now();
+  for(const s of stacks.values()){
+    s.size = s.members.length;
+    s.support = s.members.reduce((n,m) => n + (m.votes||0), 0);
+    s.latest = Math.max(...s.members.map(m => m.ts||0));
+    s.freshAt = Math.max(0, ...s.members.map(m => fresh.get(m.id) || 0));
+    s.isFresh = now - s.freshAt < FRESH_MS;
+    if(!AREA[s.area]) s.area = "other";
+  }
+  return {stacks, rootOf, visible:vis.length};
+}
+function rank(a,b){
+  if(a.isFresh !== b.isFresh) return a.isFresh ? -1 : 1;
+  if(a.isFresh) return b.freshAt - a.freshAt;
+  return (b.support - a.support) || (b.size - a.size) || (b.latest - a.latest);
+}
+
+/* ---------- Rendering ---------- */
+function dotsHTML(n){
+  const k = Math.min(n, 10);
+  let h = '<span class="dots" aria-label="' + n + ' supporters">';
+  for(let i=0;i<k;i++) h += "<i></i>";
+  if(n > 10) h += "<em>+</em>";
+  return h + "</span>";
+}
+function noteEl(s){
+  const a = AREA[s.area];
+  const el = document.createElement("div");
+  el.className = "note" + (s.size > 1 ? " stacked" : "");
+  el.style.setProperty("--c", a.color);
+  el.dataset.id = s.root.id; el.dataset.size = s.size; el.dataset.area = s.area;
+  el.setAttribute("role","button"); el.tabIndex = 0;
+  const by = s.root.name ? s.root.name : (s.size > 1 ? s.size + " people said this" : "");
+  el.innerHTML = (s.size > 1 ? '<span class="depth">×' + s.size + '</span>' : "") +
+    '<p class="txt">' + esc(s.root.text) + '</p>' +
+    (by ? '<p class="by">' + esc(by) + '</p>' : "") +
+    '<div class="meta">' + dotsHTML(s.support) + '<span class="tag">' + esc(s.root.sample ? "Sample idea" : a.short) + '</span></div>';
+  if(Date.now() - s.freshAt < 9000) el.classList.add("arrive");
+  return el;
+}
+function render(){
+  if(renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => { renderQueued = false; if(drag && drag.moving) { render(); return; } doRender(); });
+}
+let lastModel = null;
+function doRender(){
+  const model = buildStacks(); lastModel = model;
+  const all = Object.values(S.ideas).filter(i => !i.hidden);
+  const midnight = new Date(); midnight.setHours(0,0,0,0);
+  const today = all.filter(i => i.ts >= midnight.getTime()).length;
+  $("#statTotal").textContent = all.length;
+  $("#statToday").textContent = today;
+  $("#statTodayWrap").hidden = !(today > 0 && today < all.length);
+
+  const areas = AREAS.filter(a => a.key !== "other" || S.settings.showOther);
+  const summaryMode = S.settings.view === "summary";
+  $("#board").hidden = summaryMode; $("#summary").hidden = !summaryMode;
+  $("#lede").textContent = summaryMode
+    ? "What delegates told us over two days, sorted by the six opportunity areas."
+    : "Add your idea: scan the code or tap “Add your idea”. Tap any note to support it.";
+
+  const stacks = [...model.stacks.values()];
+  document.body.classList.toggle("dense1", stacks.length > 42 && stacks.length <= 100);
+  document.body.classList.toggle("dense2", stacks.length > 100);
+
+  if(summaryMode){ renderSummary(stacks, areas); return; }
+
+  const board = $("#board");
+  board.style.setProperty("--cols", areas.length);
+  board.innerHTML = "";
+  for(const a of areas){
+    const mine = stacks.filter(s => s.area === a.key).sort(rank);
+    const count = mine.reduce((n,s) => n + s.size, 0);
+    const col = document.createElement("section");
+    col.className = "col"; col.dataset.area = a.key; col.style.setProperty("--c", a.color);
+    col.innerHTML = '<div class="col-head"><h2>' + esc(a.name) + '</h2><span>' + count + (count === 1 ? " idea" : " ideas") + '</span></div><div class="list"></div>';
+    const list = col.querySelector(".list");
+    if(!mine.length){
+      const e = document.createElement("p"); e.className = "empty-col";
+      e.textContent = "No ideas here yet. Yours could be the first.";
+      list.append(e);
+    }
+    mine.forEach(s => list.append(noteEl(s)));
+    const more = document.createElement("div"); more.className = "more"; more.hidden = true;
+    list.append(more);
+    board.append(col);
+  }
+  capColumns();
+}
+function capColumns(){
+  document.querySelectorAll("#board .list").forEach(list => {
+    const notes = [...list.querySelectorAll(".note")];
+    const more = list.querySelector(".more");
+    notes.forEach(n => n.hidden = false); more.hidden = true;
+    const limit = list.clientHeight;
+    let hiddenIdeas = 0, cut = false;
+    for(const n of notes){
+      if(!cut && n.offsetTop + n.offsetHeight + 4 > limit) cut = true;
+      if(cut){ n.hidden = true; hiddenIdeas += +n.dataset.size; }
+    }
+    if(cut){
+      more.hidden = false;
+      more.textContent = "+" + hiddenIdeas + " more";
+      const room = limit - more.offsetHeight - 14;
+      const shown = notes.filter(n => !n.hidden);
+      while(shown.length > 1){
+        const last = shown[shown.length-1];
+        if(last.offsetTop + last.offsetHeight <= room) break;
+        last.hidden = true; hiddenIdeas += +last.dataset.size; shown.pop();
+      }
+      more.textContent = "+" + hiddenIdeas + " more";
+    }
+  });
+}
+function renderSummary(stacks, areas){
+  const el = $("#summary");
+  const six = areas.filter(a => a.key !== "other");
+  const paras = String(S.settings.summary || "").split(/\n\s*\n|\n/).map(p => p.trim()).filter(Boolean);
+  const top = stacks.slice().sort((a,b) => (b.support - a.support) || (b.size - a.size)).slice(0,5);
+  let h = '<section class="synth"><h2>What we heard</h2>';
+  h += paras.length ? paras.map(p => '<p>' + esc(p) + '</p>').join("")
+                    : '<p class="placeholder">The facilitators’ closing synthesis appears here. Write it in the facilitator panel.</p>';
+  h += '</section><section class="top"><h2>Most supported ideas</h2><div class="top-list"></div></section><div class="tiles" style="--cols:' + six.length + '">';
+  for(const a of six){
+    const mine = stacks.filter(s => s.area === a.key);
+    const count = mine.reduce((n,s) => n + s.size, 0);
+    const best = mine.slice().sort((x,y) => (y.support - x.support) || (y.size - x.size))[0];
+    h += '<div class="tile" style="--c:' + a.color + '"><h3>' + esc(a.name) + '</h3><small>' + count + (count === 1 ? " idea" : " ideas") +
+         (best && best.size > 1 ? ", strongest theme said " + best.size + " times" : "") + '</small><p>' +
+         (best ? esc(best.root.text) : "No ideas in this area.") + '</p></div>';
+  }
+  el.innerHTML = h + "</div>";
+  const tl = el.querySelector(".top-list");
+  tl.style.cssText = "display:flex;flex-direction:column;gap:calc(var(--u)*.7);min-height:0;overflow:hidden";
+  top.forEach(s => { const n = noteEl(s); n.classList.remove("arrive"); tl.append(n); });
+  if(!top.length) tl.innerHTML = '<p class="empty-col">No ideas yet.</p>';
+  const lim = tl.getBoundingClientRect().bottom;
+  [...tl.querySelectorAll(".note")].forEach(n => { if(n.getBoundingClientRect().bottom > lim + 1) n.hidden = true; });
+}
+
+/* ---------- Ticker ---------- */
+let tickIdx = 0;
+function tick(){
+  const lines = (S.settings.notes || []).filter(Boolean);
+  const p = $("#ticker");
+  if(!lines.length){ p.textContent = ""; return; }
+  p.classList.add("fade");
+  setTimeout(() => { tickIdx = (tickIdx + 1) % lines.length; p.textContent = lines[tickIdx]; p.classList.remove("fade"); }, 500);
+}
+
+/* ---------- Sheets ---------- */
+function openSheet(html, wide){
+  const sh = $("#sheet");
+  sh.className = "sheet" + (wide ? " wide" : "");
+  sh.innerHTML = '<button class="iconbtn close" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' + html;
+  $("#scrim").hidden = false;
+  return sh;
+}
+function closeSheet(){ $("#scrim").hidden = true; $("#sheet").innerHTML = ""; }
+$("#scrim").addEventListener("click", e => { if(e.target.id === "scrim" || e.target.closest("[data-close]")) closeSheet(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("#scrim").hidden) closeSheet(); });
+
+let toastTimer;
+function toast(t){ const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, 4200); }
+
+function areaChips(selected, name){
+  return '<div class="chips" role="group" aria-label="Opportunity area">' + AREAS.map(a =>
+    '<button type="button" class="chip" data-' + name + '="' + a.key + '" style="--c:' + a.color + '" aria-pressed="' + (a.key === selected) + '">' + esc(a.name) + '</button>').join("") + '</div>';
+}
+
+/* Add an idea */
+function openAdd(opts = {}){
+  const parent = opts.parent ? S.ideas[opts.parent] : null;
+  let area = opts.area || (parent ? parent.area : "");
+  const pa = parent ? AREA[parent.area] || AREA.other : null;
+  const sh = openSheet(
+    '<h2>' + (parent ? "Build on this idea" : "Add your idea") + '</h2>' +
+    (parent ? '<p class="quote" style="--c:' + pa.color + '">“' + esc(parent.text) + '”</p>' : "") +
+    '<label for="ideaText"><strong>' + (parent ? "Your response" : "Your idea") + '</strong></label>' +
+    '<textarea id="ideaText" maxlength="280" placeholder="One idea, in a sentence or two"></textarea>' +
+    '<div class="counter" id="ideaCount">0 / 200</div>' +
+    '<h3>Which area does it belong to?</h3>' + areaChips(area, "pick") +
+    '<h3><label for="ideaName">Your name and college (optional)</label></h3>' +
+    '<input type="text" id="ideaName" maxlength="80" autocomplete="off" placeholder="Leave blank to post anonymously">' +
+    '<div class="row end"><button class="btn quiet" data-close>Cancel</button><button class="btn primary" id="postBtn" disabled>Post to the wall</button></div>');
+  const ta = sh.querySelector("#ideaText"), post = sh.querySelector("#postBtn"), cnt = sh.querySelector("#ideaCount");
+  const sync = () => {
+    const n = ta.value.trim().length;
+    cnt.textContent = n + " / 200"; cnt.classList.toggle("over", n > 200);
+    post.disabled = !(n >= 3 && area);
+  };
+  ta.addEventListener("input", sync);
+  sh.querySelectorAll("[data-pick]").forEach(b => b.addEventListener("click", () => {
+    area = b.dataset.pick;
+    sh.querySelectorAll("[data-pick]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    sync();
+  }));
+  post.addEventListener("click", () => {
+    const idea = {id:uid(), text:ta.value.trim().replace(/\s+/g," "), area, name:sh.querySelector("#ideaName").value.trim(),
+                  ts:Date.now(), votes:0, hidden:false, parent:parent ? (lastModel?.rootOf[parent.id] || parent.id) : null, solo:false, src:"hub"};
+    putIdea(idea); closeSheet();
+    toast("Your idea is on the wall. Look for the outlined note in " + AREA[area].name + ".");
+  });
+  setTimeout(() => ta.focus(), 60);
+}
+
+/* Detail of a note or stack */
+function openDetail(rootId){
+  const m = lastModel || buildStacks();
+  const s = m.stacks.get(rootId); if(!s) return;
+  const a = AREA[s.area];
+  const others = s.members.filter(x => x.id !== s.root.id);
+  const cooling = Date.now() - (lastVote[rootId] || 0) < VOTE_COOLDOWN;
+  let h = '<div class="detail-strip" style="--c:' + a.color + '"></div>' +
+    '<p class="help" style="margin:0 0 .6em">' + esc(a.name) + (s.root.sample ? ", sample idea" : "") + '</p>' +
+    '<p class="detail-text">' + esc(s.root.text) + '</p>' +
+    (s.root.name ? '<p class="help" style="font-size:1em">' + esc(s.root.name) + '</p>' : "");
+  if(others.length){
+    h += '<h3>' + (others.length === 1 ? "One more person said something similar" : others.length + " more people said something similar") + '</h3><ul class="members">' +
+      others.map(o => '<li><span>' + esc(o.text) + (o.name ? '<small>' + esc(o.name) + '</small>' : "") + '</span>' +
+        (facil ? '<button class="btn quiet" data-split="' + o.id + '">Split out</button><button class="btn quiet" data-hide="' + o.id + '">Hide</button>' : "") + '</li>').join("") + '</ul>';
+  }
+  h += '<div class="row" style="justify-content:space-between"><span style="font-size:1.4em">' + dotsHTML(s.support) + '</span>' +
+       '<span class="row" style="margin:0"><button class="btn" id="buildBtn">Build on this idea</button>' +
+       '<button class="btn primary" id="voteBtn"' + (cooling ? " disabled" : "") + '>' + (cooling ? "Support counted" : "Support this idea") + '</button></span></div>';
+  if(facil){
+    h += '<h3>Facilitator</h3><p class="help">Move this ' + (s.size > 1 ? "stack" : "idea") + ' to another area:</p>' + areaChips(s.area, "move") +
+      '<div class="row">' + (s.size > 1 ? '<button class="btn quiet" id="splitAll">Split the stack apart</button>' : "") +
+      '<button class="btn quiet" id="hideRoot">Hide this idea</button>' +
+      (s.size > 1 ? '<button class="btn quiet" id="hideAll">Hide the whole stack</button>' : "") + '</div>';
+  }
+  const sh = openSheet(h);
+  sh.querySelector("#voteBtn").addEventListener("click", e => {
+    lastVote[rootId] = Date.now();
+    patchIdea(s.root.id, {votes:(S.ideas[s.root.id].votes||0) + 1});
+    e.target.disabled = true; e.target.textContent = "Support counted";
+    sh.querySelector(".dots").outerHTML = dotsHTML(s.support + 1);
+  });
+  sh.querySelector("#buildBtn").addEventListener("click", () => openAdd({parent:s.root.id}));
+  if(!facil) return;
+  sh.querySelectorAll("[data-move]").forEach(b => b.addEventListener("click", () => { moveStack(rootId, b.dataset.move); closeSheet(); }));
+  sh.querySelectorAll("[data-split]").forEach(b => b.addEventListener("click", () => { patchIdea(b.dataset.split, {parent:null, solo:true}); openDetail(rootId); }));
+  sh.querySelectorAll("[data-hide]").forEach(b => b.addEventListener("click", () => { patchIdea(b.dataset.hide, {hidden:true}); openDetail(rootId); }));
+  sh.querySelector("#splitAll")?.addEventListener("click", () => { others.forEach(o => patchIdea(o.id, {parent:null, solo:true})); closeSheet(); toast("Stack split apart."); });
+  sh.querySelector("#hideRoot").addEventListener("click", () => { patchIdea(s.root.id, {hidden:true}); closeSheet(); toast("Idea hidden. Restore it from the facilitator panel."); });
+  sh.querySelector("#hideAll")?.addEventListener("click", () => { s.members.forEach(o => patchIdea(o.id, {hidden:true})); closeSheet(); toast("Stack hidden. Restore it from the facilitator panel."); });
+}
+function moveStack(rootId, area){
+  const s = lastModel?.stacks.get(rootId); if(!s || s.area === area) return;
+  s.members.forEach(m => patchIdea(m.id, {area, parent: m.id === rootId ? m.parent : (m.parent || rootId)}));
+  fresh.set(rootId, Date.now());
+  toast("Moved to " + AREA[area].name + ".");
+}
+function mergeStacks(fromRoot, toRoot){
+  const from = lastModel?.stacks.get(fromRoot), to = lastModel?.stacks.get(toRoot);
+  if(!from || !to) return;
+  from.members.forEach(m => patchIdea(m.id, {parent:toRoot, area:to.area, solo:false}));
+  fresh.set(toRoot, Date.now());
+  toast("Stacked. Tap the stack to split it again.");
+}
+
+/* Find my idea */
+function openFind(){
+  const sh = openSheet('<h2>Find my idea</h2><input type="search" id="findQ" placeholder="Type a word from your idea, or your name" autocomplete="off"><ul class="results" id="findR"></ul>');
+  const q = sh.querySelector("#findQ"), out = sh.querySelector("#findR");
+  const run = () => {
+    const t = q.value.trim().toLowerCase();
+    if(t.length < 2){ out.innerHTML = '<li class="help">Results appear as you type.</li>'; return; }
+    const hits = Object.values(S.ideas).filter(i => !i.hidden && (i.text.toLowerCase().includes(t) || (i.name||"").toLowerCase().includes(t))).slice(0,20);
+    out.innerHTML = hits.length ? hits.map(i => {
+      const a = AREA[i.area] || AREA.other;
+      return '<li><button data-open="' + i.id + '" style="--c:' + a.color + '">' + esc(i.text) + '<small>' + esc(a.name) + (i.name ? ", " + esc(i.name) : "") + '</small></button></li>';
+    }).join("") : '<li class="help">No ideas match that yet.</li>';
+  };
+  q.addEventListener("input", run); run();
+  out.addEventListener("click", e => {
+    const b = e.target.closest("[data-open]"); if(!b) return;
+    const root = lastModel?.rootOf[b.dataset.open] || b.dataset.open;
+    fresh.set(root, Date.now()); render(); openDetail(root);
+  });
+  setTimeout(() => q.focus(), 60);
+}
+
+/* ---------- Facilitator ---------- */
+function openPin(){
+  const sh = openSheet('<h2>Facilitator controls</h2><label for="pinIn">Enter the facilitator PIN</label><input type="password" inputmode="numeric" id="pinIn" class="pin" maxlength="8" autocomplete="off"><div class="msg" id="pinMsg"></div><div class="row end"><button class="btn quiet" data-close>Cancel</button><button class="btn primary" id="pinGo">Unlock</button></div>');
+  const inp = sh.querySelector("#pinIn");
+  const go = () => {
+    if(inp.value === String(S.settings.pin || "1967")){ enterFacil(); openPanel(); }
+    else { sh.querySelector("#pinMsg").textContent = "That PIN didn’t match. Try again."; inp.value = ""; inp.focus(); }
+  };
+  sh.querySelector("#pinGo").addEventListener("click", go);
+  inp.addEventListener("keydown", e => { if(e.key === "Enter") go(); });
+  setTimeout(() => inp.focus(), 60);
+}
+function enterFacil(){ facil = true; lastTouch = Date.now(); document.body.classList.add("facil"); $("#facilStrip").hidden = false; }
+function exitFacil(){ facil = false; document.body.classList.remove("facil"); $("#facilStrip").hidden = true; closeSheet(); }
+
+function openPanel(){
+  const st = S.settings;
+  const hidden = Object.values(S.ideas).filter(i => i.hidden).sort((a,b) => b.ts - a.ts);
+  const samples = Object.values(S.ideas).some(i => i.sample);
+  const sh = openSheet(
+    '<h2>Facilitator panel</h2>' +
+    '<p class="help">' + (dbLive ? "Changes save to the shared wall, so every screen showing this page updates." : "Changes save on this screen only. Save a backup before ending a session on the Hub.") + '</p>' +
+    '<div class="panel-grid"><div>' +
+      '<h3>What the wall shows</h3>' +
+      '<div class="row" style="margin-top:0"><button class="btn primary" id="viewBtn">' + (st.view === "summary" ? "Return to the live wall" : "Show the closing summary") + '</button></div>' +
+      '<label class="switch"><input type="checkbox" id="otherT"' + (st.showOther ? " checked" : "") + '> Show the “Something else” column</label>' +
+      '<h3><label for="notesT">Facilitators’ notes</label></h3><p class="help">One note per line. They rotate along the bottom of the wall.</p>' +
+      '<textarea id="notesT" style="min-height:8em">' + esc((st.notes||[]).join("\n")) + '</textarea>' +
+      '<div class="row"><button class="btn" id="saveNotes">Save notes</button></div>' +
+      '<h3><label for="sumT">Closing synthesis</label></h3><p class="help">Three to five sentences. Shown large on the closing summary.</p>' +
+      '<textarea id="sumT" style="min-height:8em">' + esc(st.summary||"") + '</textarea>' +
+      '<div class="row"><button class="btn" id="saveSum">Save synthesis</button></div>' +
+    '</div><div>' +
+      '<h3>Microsoft Forms responses</h3><p class="help">In Forms, open Responses and download the Excel file, then choose it here. Only new responses are added, so you can import the same file again later.</p>' +
+      '<div class="row"><label class="btn filebtn">Import responses (.xlsx or .csv)<input type="file" id="importF" accept=".xlsx,.xls,.csv"></label></div><div class="msg" id="importMsg"></div>' +
+      '<h3>Backup</h3><p class="help">A backup file holds every idea, vote and note.</p>' +
+      '<div class="row"><button class="btn" id="backupBtn">Save backup file</button><label class="btn filebtn quiet">Restore from backup<input type="file" id="restoreF" accept=".json"></label></div><div class="msg" id="backupMsg"></div>' +
+      '<h3>Sample ideas</h3><div class="row" style="margin-top:0">' + (samples ? '<button class="btn quiet" id="unsample">Remove sample ideas</button>' : '<button class="btn quiet" id="sample">Load sample ideas</button>') + '</div>' +
+      '<h3>Hidden ideas (' + hidden.length + ')</h3>' +
+      (hidden.length ? '<ul class="members">' + hidden.slice(0,30).map(i => '<li><span>' + esc(i.text) + '</span><button class="btn quiet" data-unhide="' + i.id + '">Show again</button></li>').join("") + '</ul>' : '<p class="help">Nothing hidden.</p>') +
+      '<h3><label for="pinNew">Facilitator PIN</label></h3><div class="row" style="margin-top:0"><input type="text" inputmode="numeric" id="pinNew" maxlength="8" style="width:8em" value="' + esc(st.pin) + '"><button class="btn quiet" id="pinSave">Change PIN</button></div>' +
+      '<h3>Start over</h3><div class="row" style="margin-top:0"><button class="btn quiet" id="clearAll">Delete every idea</button></div>' +
+    '</div></div>' +
+    '<div class="row end"><button class="btn" id="exitBtn">Exit facilitator mode</button><button class="btn primary" data-close>Done</button></div>', true);
+
+  sh.querySelector("#viewBtn").addEventListener("click", () => { st.view = st.view === "summary" ? "wall" : "summary"; saveSettings(); closeSheet(); });
+  sh.querySelector("#otherT").addEventListener("change", e => { st.showOther = e.target.checked; saveSettings(); });
+  sh.querySelector("#saveNotes").addEventListener("click", () => { st.notes = sh.querySelector("#notesT").value.split("\n").map(s => s.trim()).filter(Boolean); saveSettings(); tickIdx = -1; tick(); toast("Notes saved."); });
+  sh.querySelector("#saveSum").addEventListener("click", () => { st.summary = sh.querySelector("#sumT").value.trim(); saveSettings(); toast("Synthesis saved."); });
+  sh.querySelector("#importF").addEventListener("change", async e => {
+    const f = e.target.files[0]; if(!f) return;
+    const msg = sh.querySelector("#importMsg"); msg.textContent = "Reading " + f.name + "…";
+    try{ const n = await importFile(f); msg.textContent = n ? n + " new " + (n === 1 ? "idea" : "ideas") + " added to the wall." : "No new responses in that file."; }
+    catch(err){ msg.textContent = err.message || "That file couldn’t be read."; }
+    e.target.value = "";
+  });
+  sh.querySelector("#backupBtn").addEventListener("click", () => saveBackup(sh.querySelector("#backupMsg")));
+  sh.querySelector("#restoreF").addEventListener("change", async e => {
+    const f = e.target.files[0]; if(!f) return;
+    const msg = sh.querySelector("#backupMsg");
+    try{
+      const data = JSON.parse(await f.text());
+      let n = 0;
+      for(const [id, i] of Object.entries(data.ideas || {})){ if(!S.ideas[id] && i && i.text){ S.ideas[id] = {...cleanIdea(i), id}; pushIdea(id); n++; } }
+      if(data.settings){ Object.assign(st, data.settings); saveSettings(); }
+      render(); msg.textContent = n + " ideas restored.";
+    }catch(err){ msg.textContent = "That isn’t a backup file from this wall."; }
+    e.target.value = "";
+  });
+  sh.querySelector("#sample")?.addEventListener("click", () => { loadSamples(); openPanel(); });
+  sh.querySelector("#unsample")?.addEventListener("click", () => { Object.values(S.ideas).filter(i => i.sample).forEach(i => removeIdea(i.id)); openPanel(); });
+  sh.querySelectorAll("[data-unhide]").forEach(b => b.addEventListener("click", () => { patchIdea(b.dataset.unhide, {hidden:false}); openPanel(); }));
+  sh.querySelector("#pinSave").addEventListener("click", () => { const v = sh.querySelector("#pinNew").value.trim(); if(/^\d{4,8}$/.test(v)){ st.pin = v; saveSettings(); toast("PIN changed."); } else toast("Use 4 to 8 digits."); });
+  sh.querySelector("#clearAll").addEventListener("click", e => {
+    if(e.target.dataset.armed){ Object.keys(S.ideas).forEach(removeIdea); closeSheet(); toast("Every idea deleted."); }
+    else { e.target.dataset.armed = "1"; e.target.textContent = "Tap again to delete every idea"; }
+  });
+  sh.querySelector("#exitBtn").addEventListener("click", exitFacil);
+}
+
+/* ---------- Import (Microsoft Forms export) ---------- */
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    s.onload = res;
+    s.onerror = () => rej(new Error("The spreadsheet reader didn’t load. Connect to the internet, or save the responses as CSV and import that."));
+    document.head.append(s);
+  });
+}
+function parseCSV(t){
+  const rows = []; let row = [], cell = "", q = false;
+  for(let i = 0; i < t.length; i++){
+    const c = t[i];
+    if(q){ if(c === '"'){ if(t[i+1] === '"'){ cell += '"'; i++; } else q = false; } else cell += c; }
+    else if(c === '"') q = true;
+    else if(c === ","){ row.push(cell); cell = ""; }
+    else if(c === "\n" || c === "\r"){ if(c === "\r" && t[i+1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if(cell || row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
+function matchArea(v){
+  const s = String(v||"").toLowerCase();
+  if(/talent|workforce|skill|labou?r/.test(s)) return "talent";
+  if(/innovat|research/.test(s)) return "innovation";
+  if(/productiv/.test(s)) return "productivity";
+  if(/communit|resilien/.test(s)) return "community";
+  if(/industr|transform/.test(s)) return "industry";
+  if(/student|success|learner/.test(s)) return "students";
+  return "other";
+}
+function hash(s){ let h = 5381; for(let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h.toString(36); }
+async function importFile(file){
+  let rows;
+  if(/\.csv$/i.test(file.name)) rows = parseCSV(await file.text());
+  else {
+    await loadXLSX();
+    const wb = XLSX.read(await file.arrayBuffer());
+    rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:false, defval:""});
+  }
+  rows = rows.filter(r => r && r.some(c => String(c).trim()));
+  if(rows.length < 2) throw new Error("That file has no responses in it.");
+  const L = rows[0].map(h => String(h).trim().toLowerCase());
+  const idCol = L.indexOf("id");
+  const timeCol = L.findIndex(h => h.includes("completion time") || h.includes("timestamp") || h.includes("start time"));
+  const areaCol = L.findIndex(h => /opportunity|area|theme|category/.test(h));
+  let ideaCol = L.findIndex((h, i) => i !== areaCol && /idea|how might|power growth/.test(h));
+  if(ideaCol < 0){
+    let best = -1, bestLen = 0;
+    L.forEach((h, i) => {
+      if([idCol, timeCol, areaCol].includes(i) || /email|name|time/.test(h)) return;
+      const avg = rows.slice(1).reduce((n, r) => n + String(r[i]||"").length, 0) / (rows.length - 1);
+      if(avg > bestLen){ bestLen = avg; best = i; }
+    });
+    ideaCol = best;
+  }
+  if(ideaCol < 0) throw new Error("Couldn’t find the idea column. Check that the file is the Forms response export.");
+  let nameCol = L.findIndex((h, i) => i !== ideaCol && i !== areaCol && h.includes("name") && h !== "name");
+  if(nameCol < 0) nameCol = L.indexOf("name");
+  let added = 0;
+  for(const r of rows.slice(1)){
+    const text = String(r[ideaCol]||"").trim().replace(/\s+/g, " ");
+    if(text.length < 2) continue;
+    const key = "forms-" + (idCol >= 0 && String(r[idCol]).trim() ? String(r[idCol]).trim().replace(/[^A-Za-z0-9_\-.~:@+]/g, "") : hash(text + (r[timeCol]||"")));
+    if(S.ideas[key]) continue;
+    let name = nameCol >= 0 ? String(r[nameCol]||"").trim() : "";
+    if(/^anonymous$/i.test(name)) name = "";
+    const t = timeCol >= 0 ? Date.parse(r[timeCol]) : NaN;
+    S.ideas[key] = {id:key, text:text.slice(0,400), area:matchArea(areaCol >= 0 ? r[areaCol] : ""), name:name.slice(0,80),
+                    ts: isNaN(t) ? Date.now() : t, votes:0, hidden:false, parent:null, solo:false, src:"forms"};
+    fresh.set(key, Date.now()); pushIdea(key); added++;
+  }
+  render();
+  return added;
+}
+
+/* ---------- Backup ---------- */
+async function saveBackup(msg){
+  const data = JSON.stringify({wall:"Live Idea Wall", saved:new Date().toISOString(), ideas:S.ideas, settings:S.settings}, null, 1);
+  const name = "idea-wall-backup-" + new Date().toISOString().slice(0,16).replace(/[:T]/g, "-") + ".json";
+  let dl = null;
+  try{ dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null; }catch(e){}
+  if(dl){
+    try{ await dl.save({filename:name, data}); msg.textContent = "Backup saved."; }
+    catch(e){ msg.textContent = e && e.code === "declined" ? "Backup not saved." : "This screen can’t save files. Open the wall on a laptop to save a backup."; }
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([data], {type:"application/json"}));
+  a.download = name; document.body.append(a); a.click(); a.remove();
+  msg.textContent = "Backup saved to Downloads.";
+}
+
+/* ---------- Sample ideas (clearly tagged; remove before the summit) ---------- */
+function loadSamples(){
+  const base = Date.now() - 3 * 3600000;
+  const list = [
+    ["talent","Stackable micro-credentials that count toward a full diploma"],
+    ["talent","Let micro-credentials stack into a diploma so mid-career workers can keep going"],
+    ["talent","Paid co-op placements in every program, not only the ones employers already love"],
+    ["innovation","Applied research vouchers small businesses can spend at any Ontario college"],
+    ["innovation","Shared prototyping labs between colleges so no one has to buy every machine"],
+    ["productivity","Train small manufacturers’ staff on automation in their own plants"],
+    ["productivity","A college-led AI adoption clinic for businesses under 50 employees"],
+    ["community","Colleges as regional hubs for climate adaptation skills"],
+    ["community","Housing on campus that also serves local workers, not only students"],
+    ["industry","Co-design programs with industry on a two-year cycle instead of five"],
+    ["industry","Clean-tech retrofit training for the trades already in the field"],
+    ["students","Guaranteed mental health support within a week of asking"],
+    ["students","One application and one transcript across every Ontario college"],
+    ["other","Make it easier to move between college and university without losing credits"]
+  ];
+  list.forEach(([area, text], k) => {
+    const id = "sample-" + k;
+    S.ideas[id] = {id, text, area, name:"", ts:base + k * 600000, votes:(k * 7) % 5, hidden:false, parent:null, solo:false, sample:true, src:"sample"};
+    pushIdea(id);
+  });
+  render();
+}
+
+/* ---------- Dragging (touch, pen and mouse) ---------- */
+const board = $("#board");
+board.addEventListener("pointerdown", e => {
+  const n = e.target.closest(".note"); if(!n) return;
+  lastTouch = Date.now();
+  drag = {id:n.dataset.id, area:n.dataset.area, el:n, x:e.clientX, y:e.clientY, moving:false, ghost:null, hover:null};
+  try{ n.setPointerCapture(e.pointerId); }catch(err){}
+});
+window.addEventListener("pointermove", e => {
+  if(!drag) return;
+  if(!drag.moving){
+    if(Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 14) return;
+    const r = drag.el.getBoundingClientRect();
+    drag.moving = true; drag.ox = e.clientX - r.left; drag.oy = e.clientY - r.top;
+    const g = drag.el.cloneNode(true);
+    g.classList.add("ghost"); g.classList.remove("arrive"); g.style.width = r.width + "px";
+    document.body.append(g); drag.ghost = g; drag.el.classList.add("lifted");
+  }
+  drag.ghost.style.transform = "translate(" + (e.clientX - drag.ox) + "px," + (e.clientY - drag.oy) + "px)";
+  const t = document.elementFromPoint(e.clientX, e.clientY);
+  const tn = facil ? t?.closest(".note") : null;
+  const tc = t?.closest(".col");
+  document.querySelectorAll(".col.drop,.note.target").forEach(x => x.classList.remove("drop","target"));
+  if(tn && tn.dataset.id !== drag.id) tn.classList.add("target");
+  else if(tc && tc.dataset.area !== drag.area) tc.classList.add("drop");
+});
+function endDrag(e, cancelled){
+  if(!drag) return;
+  const d = drag; drag = null;
+  document.querySelectorAll(".col.drop,.note.target").forEach(x => x.classList.remove("drop","target"));
+  if(!d.moving){ if(!cancelled) openDetail(d.id); return; }
+  d.ghost.remove(); d.el.classList.remove("lifted");
+  if(!cancelled){
+    const t = document.elementFromPoint(e.clientX, e.clientY);
+    const tn = facil ? t?.closest(".note") : null;
+    const tc = t?.closest(".col");
+    if(tn && tn.dataset.id !== d.id) mergeStacks(d.id, tn.dataset.id);
+    else if(tc && tc.dataset.area !== d.area) moveStack(d.id, tc.dataset.area);
+  }
+  render();
+}
+window.addEventListener("pointerup", e => endDrag(e, false));
+window.addEventListener("pointercancel", e => endDrag(e, true));
+board.addEventListener("keydown", e => { const n = e.target.closest(".note"); if(n && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); openDetail(n.dataset.id); } });
+$("#summary").addEventListener("click", e => { const n = e.target.closest(".note"); if(n) openDetail(n.dataset.id); });
+
+/* ---------- Wiring ---------- */
+$("#addBtn").addEventListener("click", () => openAdd());
+$("#findBtn").addEventListener("click", openFind);
+$("#gearBtn").addEventListener("click", () => facil ? openPanel() : openPin());
+$("#openPanel").addEventListener("click", openPanel);
+$("#exitFacil").addEventListener("click", exitFacil);
+$("#fsBtn").addEventListener("click", async () => {
+  try{
+    if(document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  }catch(e){ toast("Press F11 for full screen."); }
+});
+["pointerdown","keydown"].forEach(ev => window.addEventListener(ev, () => lastTouch = Date.now(), {passive:true}));
+let resizeT; window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(render, 150); });
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+
+setInterval(tick, 9000);
+setInterval(() => {
+  const now = Date.now();
+  for(const [id, t] of fresh) if(now - t > FRESH_MS) fresh.delete(id);
+  if(facil && now - lastTouch > FACIL_IDLE) exitFacil();
+  if($("#scrim").hidden) render();
+}, 20000);
+
+load();
+$("#ticker").textContent = (S.settings.notes || [])[0] || "";
+render();
+connectStore();
+</script>
+</body>
+</html>
