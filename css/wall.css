@@ -1,0 +1,365 @@
+/* ============================================================
+   The wall (big screen). Layout and note style follow the early test
+   prototype; additions for the live version are marked "new".
+   ============================================================ */
+
+:root{
+  /* set from JS: how many columns the board draws, and how big notes are */
+  --cols: 6;
+  --mcols: 6;
+  --note-fs: 13px;
+}
+
+html,body{ width:100%; height:100%; overflow:hidden; }
+
+body.wall{
+  height:100vh; position:relative;
+  display:flex; flex-direction:column;
+}
+
+/* ---------------- Header ---------------- */
+header{
+  background:var(--paper);
+  border-bottom:1px solid var(--rule);
+  padding:clamp(10px,1.3vh,16px) clamp(24px,3vw,48px) clamp(10px,1.3vh,14px);
+  text-align:center;
+  position:relative;
+  flex-shrink:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center;
+  column-gap:clamp(16px,2vw,32px);
+}
+.header-main{ grid-column:2; min-width:0; }
+.logo{ display:block; height:auto; object-fit:contain; }
+.logo-left { grid-column:1; justify-self:start;
+  width:clamp(120px,10vw,190px); }
+.logo-right{ grid-column:3; justify-self:end;
+  width:clamp(110px,9vw,170px); }
+.wordmark{
+  display:inline-flex; align-items:center; gap:10px;
+  margin-bottom:clamp(6px,1vh,10px);
+}
+.wordmark .tag{
+  font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+  color:#fff; background:var(--pink);
+  padding:4px 10px; border-radius:999px;
+}
+h1{
+  font-weight:700;
+  font-size:clamp(19px, 2.1vw, 44px);
+  line-height:1.2; color:var(--navy);
+  max-width:1180px; margin:0 auto;
+}
+.subtitle{
+  margin-top:6px;
+  font-size:clamp(11px,0.95vw,18px);
+  color:var(--muted);
+}
+
+/* ---------------- View bar ---------------- */
+.viewbar{
+  position:absolute; left:50%; bottom:0; transform:translate(-50%,50%);
+  z-index:5;
+  display:flex; align-items:center; gap:6px;
+  padding:5px 8px; border-radius:999px;
+  background:var(--paper); border:1px solid var(--rule);
+  box-shadow:0 4px 14px rgba(0,0,0,0.08);
+  opacity:0; transition:opacity 0.25s ease;
+}
+.viewbar:hover, .viewbar.awake, .viewbar:focus-within{ opacity:1; }
+.vbtn{
+  font:inherit; font-size:11px; font-weight:700;
+  letter-spacing:0.04em; text-transform:uppercase;
+  color:var(--muted); background:var(--panel);
+  border:1px solid var(--rule); border-radius:999px;
+  padding:6px 12px; cursor:pointer; white-space:nowrap;
+  transition:background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.vbtn:hover{ color:var(--navy); border-color:var(--navy); }
+.vbtn[aria-pressed="true"]{
+  background:var(--navy); color:#fff; border-color:var(--navy);
+}
+.vbtn .k{ opacity:0.55; font-weight:600; margin-left:5px; }
+.vsep{ width:1px; height:20px; background:var(--rule); margin:0 3px; }
+
+/* ---------------- Board ---------------- */
+.board{
+  flex:1; min-height:0; position:relative;
+  padding:clamp(10px,1.4vh,16px) clamp(16px,2.4vw,40px);
+}
+
+/* --- view: columns (by opportunity area) --- */
+.board[data-view="columns"]{
+  display:grid;
+  grid-template-columns:repeat(var(--cols), minmax(0,1fr));
+  grid-auto-rows:minmax(0,1fr);
+  gap:clamp(8px,0.8vw,14px);
+}
+
+/* --- views: recent / top (one flowing wall of tiles) --- */
+.board[data-view="recent"],
+.board[data-view="top"]{
+  display:block;
+  columns:var(--mcols);
+  column-gap:clamp(8px,0.8vw,14px);
+  overflow:hidden;
+}
+.board[data-view="recent"] .note,
+.board[data-view="top"] .note{
+  break-inside:avoid;
+  margin:0 0 clamp(8px,0.8vw,14px);
+}
+
+.column{
+  display:flex; flex-direction:column; min-height:0;
+  background:var(--paper);
+  border:1px solid var(--rule);
+  border-top:4px solid var(--accent, var(--muted));
+  border-radius:10px;
+  box-shadow:0 2px 8px rgba(0,55,103,0.06);
+  overflow:hidden;
+}
+
+.col-head{
+  padding:9px 12px 8px;
+  border-bottom:1px solid var(--rule);
+  flex-shrink:0;
+}
+.col-head .swatch{
+  width:9px; height:9px; border-radius:50%;
+  display:inline-block; margin-right:7px;
+  background:var(--accent, var(--muted));
+}
+.col-head .label{
+  font-size:clamp(10.5px,0.9vw,18px);
+  font-weight:700; color:var(--navy);
+}
+.col-head .count{
+  display:block; margin-top:2px;
+  font-size:clamp(10px,0.65vw,13px); color:var(--muted);
+  letter-spacing:0.06em; text-transform:uppercase;
+}
+
+/* A column never scrolls: js/wall.js shows what fits and pages through the rest. */
+.col-body{
+  flex:1; min-height:0; overflow:hidden;
+  padding:8px 9px 12px;
+  display:flex; flex-direction:column; gap:7px;
+  background:var(--panel);
+}
+
+.col-empty{
+  margin:auto; text-align:center;
+  font-size:clamp(11px,0.75vw,15px); color:var(--muted);
+  padding:16px 8px; line-height:1.4;
+}
+
+/* ---------------- Notes ---------------- */
+.note{
+  position:relative;
+  isolation:isolate;          /* new: keeps the stacked "pile" behind this note */
+  flex-shrink:0;
+  background:var(--paper);
+  color:var(--ink);
+  border-radius:6px;
+  padding:9px 11px;
+  font-size:var(--note-fs);
+  line-height:1.4;
+  box-shadow:0 1px 4px rgba(0,55,103,0.08);
+  border-left:4px solid var(--accent, var(--muted));
+}
+/* only notes that are new to this screen animate in */
+.note.arrive{ animation:noteIn 0.45s ease both; }
+@keyframes noteIn{ from{ opacity:0; transform:translateY(8px); } }
+
+.note .idea{ display:block; }
+.note .from{
+  display:block; margin-top:5px;
+  font-size:0.8em; color:var(--muted);
+  text-transform:uppercase; letter-spacing:0.04em;
+}
+
+/* new: busy wall, so long ideas are cut to a few lines (full text opens on tap) */
+.board[data-density="1"] .note .idea,
+.board[data-density="2"] .note .idea{
+  display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden;
+  -webkit-line-clamp:4;
+}
+.board[data-density="2"] .note .idea{ -webkit-line-clamp:3; }
+
+/* new: bottom row of every note: support dots, stack size, area label */
+.note-meta{
+  display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px;
+  margin-top:6px;
+  font-size:0.76em;
+}
+.dots{ display:inline-flex; align-items:center; gap:2px; }
+.dots i{
+  display:inline-block; width:0.7em; height:0.7em; border-radius:50%;
+  background:var(--accent, var(--muted));
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,0.28);   /* keeps yellow dots visible on white */
+}
+.dots em{ font-style:normal; font-weight:800; color:var(--navy); margin-left:1px; }
+.depth{
+  font-weight:800; color:var(--navy);
+  background:var(--panel); border:1px solid var(--rule);
+  border-radius:999px; padding:0 6px;
+}
+/* The area label: colour alone never tells you the area */
+.note .area{
+  margin-left:auto;
+  display:inline-flex; align-items:center; gap:4px;
+  font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+  color:var(--muted); white-space:nowrap;
+}
+.note .area::before{
+  content:""; width:0.65em; height:0.65em; border-radius:50%;
+  background:var(--accent, var(--muted));
+}
+
+/* new: a note that just arrived keeps an outline and sits at the top for 2 minutes */
+.note.fresh{
+  box-shadow:0 0 0 3px var(--accent, var(--navy)), 0 4px 14px rgba(0,55,103,0.18);
+}
+.new-tag{
+  position:absolute; top:-6px; right:8px;
+  font-size:0.66em; font-weight:800; letter-spacing:0.08em; text-transform:uppercase;
+  color:#fff; background:var(--navy);
+  border-radius:999px; padding:1px 7px;
+}
+
+/* rank badge for the top view */
+.note .rank{
+  position:absolute; top:-7px; left:-7px;
+  min-width:22px; height:22px; border-radius:999px;
+  background:var(--navy); color:#fff;
+  font-size:11px; font-weight:800;
+  display:none; align-items:center; justify-content:center;
+  padding:0 6px;
+  box-shadow:0 2px 6px rgba(0,55,103,0.25);
+}
+.board[data-view="top"] .note.ranked .rank{ display:flex; }
+.board[data-view="top"] .note.ranked{
+  font-size:calc(var(--note-fs) * 1.28);
+  border-left-width:6px;
+}
+
+/* stacked-note "pile" look for a cluster of near-duplicate ideas */
+.note.stacked{ margin-bottom:9px; }
+.note.stacked::before,
+.note.stacked::after{
+  content:"";
+  position:absolute; height:100%;
+  background:var(--paper);
+  border-radius:6px;
+  box-shadow:0 1px 3px rgba(0,55,103,0.08);
+  z-index:-1;
+}
+.note.stacked::before{ top:4px; left:7px; right:7px; opacity:0.9; }
+.note.stacked::after { top:8px; left:12px; right:12px; opacity:0.65; }
+
+.more-chip{
+  flex-shrink:0; align-self:stretch;
+  font:inherit; font-size:clamp(11px,0.7vw,14px); font-weight:700;
+  letter-spacing:0.04em; text-transform:uppercase;
+  color:var(--muted); background:var(--paper);
+  border:1px dashed var(--rule); border-radius:6px;
+  padding:6px 8px; margin-top:auto; cursor:pointer;   /* new: sits at the foot of the column */
+  min-height:32px;
+  transition:color 0.12s ease, border-color 0.12s ease;
+}
+.more-chip:hover{ color:var(--navy); border-color:var(--navy); }
+
+.board.has-more{ padding-bottom:calc(clamp(10px,1.4vh,16px) + 30px); }   /* room for the pill */
+.more-pill{
+  position:absolute; right:clamp(16px,2.4vw,40px); bottom:clamp(4px,0.8vh,10px);
+  font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+  color:var(--muted); background:var(--paper);
+  border:1px solid var(--rule); border-radius:999px;
+  padding:4px 11px;
+}
+
+.board-message{
+  grid-column:1/-1; margin:auto; text-align:center;
+  color:var(--muted); font-size:16px; line-height:1.5;
+}
+
+/* ---------------- Toast ---------------- */
+.toast{
+  position:fixed; left:50%; bottom:96px; transform:translate(-50%, 12px);
+  background:var(--navy); color:#fff;
+  font-size:13px; font-weight:600;
+  padding:9px 16px; border-radius:999px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.18);
+  opacity:0; pointer-events:none;
+  transition:opacity 0.2s ease, transform 0.2s ease;
+  z-index:50;
+}
+.toast.show{ opacity:1; transform:translate(-50%, 0); }
+.toast.error{ background:var(--orange); }
+
+/* ---------------- Footer ---------------- */
+footer{
+  display:flex; align-items:center; gap:20px;
+  padding:clamp(8px,1.2vh,14px) clamp(24px,3vw,48px);
+  background:linear-gradient(90deg, var(--navy), var(--teal));
+  color:#fff;
+  flex-shrink:0;
+}
+.qr{ flex-shrink:0; text-align:center; }
+.qr img{
+  width:clamp(56px,4.2vw,96px); height:auto;
+  background:#fff; padding:5px; border-radius:8px;
+  display:block;
+}
+.qr figcaption{
+  margin-top:5px; font-size:clamp(9px,0.55vw,12px); letter-spacing:0.08em;
+  text-transform:uppercase; color:rgba(255,255,255,0.85); line-height:1.4;
+}
+.highlights{ flex:1; min-width:0; }
+.highlights .h-label{
+  font-size:clamp(11px,0.65vw,14px); letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--yellow); font-weight:700; margin-bottom:4px;
+}
+.highlights .h-text{
+  font-family:var(--serif); font-style:italic; font-weight:500;
+  font-size:clamp(13px,1.1vw,24px); color:#fff; opacity:0.96;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  transition:opacity 0.4s ease;
+}
+.highlights .h-text.fade{ opacity:0; }
+.tally{
+  flex-shrink:0; text-align:right;
+}
+.tally .big{
+  font-size:clamp(20px,1.9vw,40px); font-weight:800; line-height:1;
+}
+.tally .small{
+  margin-top:4px;
+  font-size:clamp(10px,0.6vw,13px); color:rgba(255,255,255,0.85);
+  letter-spacing:0.08em; text-transform:uppercase;
+}
+
+/* new: connection indicator (sits where the prototype's "Updated" time was) */
+.status{
+  flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+  font-size:clamp(10px,0.6vw,13px); color:rgba(255,255,255,0.85);
+  letter-spacing:0.06em; text-transform:uppercase;
+}
+.status::before{
+  content:""; width:8px; height:8px; border-radius:50%;
+  background:var(--yellow);
+}
+.status[data-state="live"]::before{ background:#7CE08F; }
+.status[data-state="demo"]::before{ background:#fff; }
+
+@media (max-width: 1100px){
+  .board[data-view="columns"]{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+  .viewbar{ position:static; grid-column:1/-1; justify-self:center; transform:none; justify-content:center; margin-top:8px; opacity:1; box-shadow:none; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .note.arrive{ animation:none; }
+  .highlights .h-text, .viewbar, .toast{ transition:none; }
+}

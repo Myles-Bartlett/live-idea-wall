@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sheridan Idea Wall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@1,8..60,500&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/wall.css">
+</head>
+<body class="wall">
+
+<header>
+  <img class="logo logo-left" src="assets/logo-sheridan.png" alt="Sheridan">
+  <div class="header-main">
+    <div class="wordmark">
+      <span class="tag">Idea Wall</span>
+    </div>
+    <h1>How might Ontario&rsquo;s colleges power growth over the next ten years?</h1>
+    <div class="subtitle">Add your idea &middot; connect it to others &middot; watch the wall take shape</div>
+  </div>
+  <img class="logo logo-right" src="assets/logo-apple-distinguished-school.png" alt="Apple Distinguished School">
+
+  <div class="viewbar" id="viewbar">
+    <button class="vbtn" type="button" data-view="columns">Areas<span class="k">1</span></button>
+    <button class="vbtn" type="button" data-view="recent">Newest<span class="k">2</span></button>
+    <button class="vbtn" type="button" data-view="top">Most supported<span class="k">3</span></button>
+    <span class="vsep"></span>
+    <button class="vbtn" type="button" id="stackBtn">Stacked<span class="k">S</span></button>
+    <button class="vbtn" type="button" id="rotateBtn">Auto<span class="k">A</span></button>
+  </div>
+</header>
+
+<main class="board" id="board" data-view="columns" aria-label="Ideas by opportunity area"></main>
+
+<div class="toast" id="toast" role="status"></div>
+
+<footer>
+  <figure class="qr">
+    <!-- The QR code for the live #add page is generated once the site address is final. -->
+    <img src="assets/qr-code.svg" alt="Scan to add your idea" onerror="this.closest('figure').style.display='none'">
+    <figcaption>Scan to add<br>your idea</figcaption>
+  </figure>
+  <div class="highlights" aria-live="polite">
+    <div class="h-label">Facilitators&rsquo; notes</div>
+    <div class="h-text" id="highlightText"></div>
+  </div>
+  <div class="tally">
+    <div class="big" id="tallyBig">0</div>
+    <div class="small" id="tallySmall">ideas so far</div>
+    <div class="small" id="tallyToday" hidden></div>
+  </div>
+  <div class="status" id="status" role="status"></div>
+</footer>
+
+<!-- Supabase client, pinned to an exact version. Change it only on purpose, after testing. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="js/areas.js"></script>
+<script src="js/samples.js"></script>
+<script src="js/stacks.js"></script>
+<script src="js/store.js"></script>
+<script src="js/wall.js"></script>
+</body>
+</html>

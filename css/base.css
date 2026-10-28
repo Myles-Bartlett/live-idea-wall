@@ -1,0 +1,58 @@
+/* ============================================================
+   Shared look: colours, fonts and basics.
+   Taken from the early test prototype (early test/idea-wall-display.html),
+   which is the source of truth for the visual design.
+
+   Sans body/UI font approximates Sheridan's site font (Aktiv Grotesk,
+   a licensed font not available on Google Fonts). The serif is used only
+   for the facilitators' notes line, the way sheridancollege.ca uses it.
+   ============================================================ */
+
+:root{
+  /* Pulled from sheridancollege.ca's own CSS variables */
+  --navy:     #003767;
+  --teal:     #008EA5;
+  --pink:     #CE2A74;
+  --orange:   #E84100;
+  --yellow:   #FFC107;
+  --green:    #28A745;
+
+  --ink:      #414A51;
+  --paper:    #FFFFFF;
+  --panel:    #F4F6F8;
+  --rule:     #E1E6EA;
+  --muted:    #737682;
+
+  /* One colour per opportunity area. Keys match js/areas.js and the database. */
+  --c-talent:       var(--navy);
+  --c-innovation:   var(--pink);
+  --c-productivity: var(--teal);
+  --c-community:    var(--green);
+  --c-industry:     var(--orange);
+  --c-students:     var(--yellow);
+  --c-other:        var(--muted);
+
+  --sans:  'Work Sans', 'Segoe UI', Arial, sans-serif;
+  --serif: 'Source Serif 4', Georgia, serif;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+[hidden]{ display:none !important; }
+
+body{
+  font-family:var(--sans);
+  color:var(--ink);
+  background:var(--panel);
+}
+
+button{ font:inherit; color:inherit; }
+button:focus-visible{ outline:3px solid var(--navy); outline-offset:2px; }
+
+/* Anything tagged with an area picks up that area's colour as --accent */
+[data-area="talent"]       { --accent:var(--c-talent); }
+[data-area="innovation"]   { --accent:var(--c-innovation); }
+[data-area="productivity"] { --accent:var(--c-productivity); }
+[data-area="community"]    { --accent:var(--c-community); }
+[data-area="industry"]     { --accent:var(--c-industry); }
+[data-area="students"]     { --accent:var(--c-students); }
+[data-area="other"]        { --accent:var(--c-other); }
