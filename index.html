@@ -6,8 +6,12 @@
 <title>Sheridan Idea Wall</title>
 <script>
   // The QR code points at /#add; the submit form itself lives in add.html.
-  // #add?kiosk becomes add.html?kiosk.
-  if (/^#add(\?|$)/.test(location.hash)) location.replace("add.html" + location.hash.slice(4));
+  // #add?kiosk becomes add.html?kiosk. Also works when #add is typed into an open wall.
+  function goToAdd(){
+    if (/^#add(\?|$)/.test(location.hash)) location.replace("add.html" + location.hash.slice(4));
+  }
+  goToAdd();
+  window.addEventListener("hashchange", goToAdd);
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
