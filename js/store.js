@@ -158,14 +158,8 @@ const Store = (() => {
       return;
     }
 
-    const cfg = window.WALL_CONFIG || {};
-    if (!window.supabase || !cfg.supabaseUrl || !cfg.supabaseKey || cfg.supabaseUrl.includes("YOUR-PROJECT")){
-      console.error("Idea wall: Supabase library or config.js missing");
-      setStatus("error");
-      return;
-    }
-
-    client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+    client = DB.client();
+    if (!client){ setStatus("error"); return; }
     refresh();
     subscribe();
 
@@ -179,8 +173,19 @@ const Store = (() => {
     document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
   }
 
+  // Demo mode only: an idea posted from the wall's form lands in memory.
+  function demoAdd(row){
+    const full = Object.assign({ created_at: new Date().toISOString(), votes: 0, hidden: false,
+                                 solo: false, is_sample: true }, row);
+    noteArrival(full.id);
+    ideas.set(full.id, fromRow(full));
+    changed();
+  }
+
   return {
     start,
+    demoAdd,
+    isDemo: () => status === "demo",
     onChange: fn => changeListeners.add(fn),
     onStatus: fn => statusListeners.add(fn),
     ideas: () => [...ideas.values()],

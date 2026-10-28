@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#003767">
+<title>Add your idea · Sheridan Idea Wall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/add.css">
+</head>
+<!-- The phone and tablet submit page: the QR code target (/#add redirects here).
+     add.html?kiosk is for tablets at the booth: no remembered name, and the
+     screen clears itself 20 s after each post. -->
+<body class="add-page">
+
+<header class="add-head">
+  <img class="add-logo" src="assets/logo-sheridan.png" alt="Sheridan">
+  <span class="tag">Idea Wall</span>
+</header>
+
+<main class="add-main">
+  <h1 class="add-question">How might Ontario&rsquo;s colleges power growth over the next ten years?</h1>
+  <div id="addRoot"></div>
+  <p class="add-status" id="addStatus" role="status" hidden></p>
+</main>
+
+<!-- Supabase client, pinned to an exact version. Change it only on purpose, after testing. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="js/areas.js"></script>
+<script src="js/db.js"></script>
+<script src="js/outbox.js"></script>
+<script src="js/addform.js"></script>
+<script src="js/add.js"></script>
+</body>
+</html>

@@ -4,11 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sheridan Idea Wall</title>
+<script>
+  // The QR code points at /#add; the submit form itself lives in add.html.
+  // #add?kiosk becomes add.html?kiosk.
+  if (/^#add(\?|$)/.test(location.hash)) location.replace("add.html" + location.hash.slice(4));
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@1,8..60,500&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/wall.css">
+<link rel="stylesheet" href="css/add.css">
 </head>
 <body class="wall">
 
@@ -37,6 +43,10 @@
 
 <div class="toast" id="toast" role="status"></div>
 
+<div class="sheet-scrim" id="scrim" hidden>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="afTitle"></div>
+</div>
+
 <footer>
   <figure class="qr">
     <!-- The QR code for the live #add page is generated once the site address is final. -->
@@ -47,6 +57,7 @@
     <div class="h-label">Facilitators&rsquo; notes</div>
     <div class="h-text" id="highlightText"></div>
   </div>
+  <button class="add-btn" type="button" id="addBtn">Add your idea</button>
   <div class="tally">
     <div class="big" id="tallyBig">0</div>
     <div class="small" id="tallySmall">ideas so far</div>
@@ -60,6 +71,9 @@
 <script src="config.js"></script>
 <script src="js/areas.js"></script>
 <script src="js/samples.js"></script>
+<script src="js/db.js"></script>
+<script src="js/outbox.js"></script>
+<script src="js/addform.js"></script>
 <script src="js/stacks.js"></script>
 <script src="js/store.js"></script>
 <script src="js/wall.js"></script>

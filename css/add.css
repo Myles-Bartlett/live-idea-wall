@@ -1,0 +1,146 @@
+/* ============================================================
+   The "Add your idea" form: full page on phones and tablets (add.html)
+   and in a pop-up on the wall. Same type and colours as the wall.
+   Text inputs are at least 16px so iPhones do not zoom in on them.
+   ============================================================ */
+
+/* ---------------- phone/tablet page ---------------- */
+.add-page{ background:var(--paper); min-height:100vh; }
+
+.add-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
+  border-bottom:1px solid var(--rule);
+}
+.add-logo{ height:28px; width:auto; }
+.tag{
+  font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+  color:#fff; background:var(--pink);
+  padding:4px 10px; border-radius:999px;
+}
+
+.add-main{
+  max-width:620px; margin:0 auto;
+  padding:18px 16px calc(env(safe-area-inset-bottom, 0px) + 32px);
+}
+.add-question{
+  font-size:clamp(21px, 5.6vw, 30px); font-weight:700; line-height:1.2;
+  color:var(--navy);
+  margin-bottom:6px;
+}
+.add-status{
+  margin-top:18px; padding:12px 14px;
+  background:#FFF4D6; color:#5A3D00;
+  border-radius:10px; font-size:15px; line-height:1.4;
+}
+
+/* ---------------- the form ---------------- */
+.af{ font-size:16px; }
+.af-title{
+  font-size:20px; font-weight:700; color:var(--ink);
+  margin-top:8px;
+}
+.af-title:focus{ outline:none; }
+
+.af-field{ margin-top:20px; border:0; min-width:0; }
+.af-label{
+  display:block; margin-bottom:8px; padding:0;
+  font-size:17px; font-weight:700; color:var(--navy);
+}
+.af-optional{ font-weight:500; color:#5E6470; }
+
+.af textarea, .af input[type="text"]{
+  display:block; width:100%;
+  font:inherit; font-size:18px; line-height:1.4;
+  color:var(--ink); background:var(--paper);
+  border:2px solid #C9D1D8; border-radius:10px;
+  padding:12px 14px;
+}
+.af textarea{ resize:vertical; min-height:6.5em; }
+.af textarea:focus, .af input[type="text"]:focus{
+  outline:3px solid rgba(0,55,103,0.25); outline-offset:0; border-color:var(--navy);
+}
+.af ::placeholder{ color:#80858F; }
+
+.af-counter{ margin-top:6px; text-align:right; font-size:14px; color:#5E6470; }
+.af-counter.warn{ color:#8A4B00; font-weight:600; }
+
+/* the seven area chips: big, two per row, colour edge + name */
+.af-chips{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.af-chip{
+  position:relative;
+  min-height:54px; padding:10px 34px 10px 12px;
+  text-align:left; font-size:16px; font-weight:600; line-height:1.2;
+  color:var(--ink); background:var(--paper);
+  border:2px solid #C9D1D8; border-left:8px solid var(--accent);
+  border-radius:10px; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.af-chip:last-child:nth-child(odd){ grid-column:1 / -1; }
+.af-chip[aria-pressed="true"]{
+  border-color:var(--navy); border-left-color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 16%, #fff);
+  box-shadow:0 0 0 1px var(--navy);
+}
+.af-chip[aria-pressed="true"]::after{
+  content:"✓";
+  position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  font-weight:800; color:var(--navy);
+}
+
+.af-note{ margin-top:18px; font-size:14px; color:#5E6470; }
+.af-error{ margin-top:8px; font-size:15px; font-weight:600; color:#B3261E; }
+
+.af-post, .af-secondary{
+  display:flex; align-items:center; justify-content:center;
+  width:100%; min-height:56px; margin-top:14px;
+  font:inherit; font-size:19px; font-weight:700; text-decoration:none;
+  border-radius:12px; cursor:pointer;
+}
+.af-post{ background:var(--navy); color:#fff; border:0; }
+.af-post:disabled{ opacity:0.7; cursor:default; }
+.af-secondary{
+  background:var(--paper); color:var(--navy);
+  border:2px solid var(--navy); font-size:17px; min-height:50px;
+}
+
+.af-quote{
+  margin-top:14px; padding:10px 14px;
+  border-left:6px solid var(--accent); border-radius:6px;
+  background:var(--panel); color:var(--ink);
+  font-size:17px; line-height:1.4;
+}
+
+/* ---------------- confirmation ---------------- */
+.af-done{ padding-top:8px; }
+.af-tick{
+  width:56px; height:56px; border-radius:50%;
+  background:var(--navy);
+  display:grid; place-items:center;
+}
+.af-tick::after{ content:"✓"; color:#fff; font-size:30px; font-weight:800; }
+.af-done .af-title{ font-size:24px; color:var(--navy); margin-top:14px; }
+.af-where{ margin-top:8px; font-size:17px; line-height:1.45; }
+.af-actions{ margin-top:10px; }
+.af-countdown{ margin-top:14px; text-align:center; font-size:14px; color:#5E6470; }
+
+/* ---------------- pop-up on the wall ---------------- */
+.sheet-scrim{
+  position:fixed; inset:0; z-index:40;
+  background:rgba(0,25,50,0.55);
+  display:grid; place-items:center; padding:16px;
+}
+.sheet{
+  position:relative;
+  width:min(720px, 94vw); max-height:94vh; overflow:auto;
+  background:var(--paper); border-radius:16px;
+  padding:clamp(20px, 2vw, 36px);
+  box-shadow:0 24px 64px rgba(0,0,0,0.35);
+}
+
+@media (min-width: 700px){
+  .af-chips{ grid-template-columns:1fr 1fr 1fr; }
+  .af-chip:last-child:nth-child(odd){ grid-column:auto; }
+  .af-actions{ display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
+  .af-actions > :only-child{ grid-column:1 / -1; }
+}

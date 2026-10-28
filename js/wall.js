@@ -449,6 +449,7 @@ document.getElementById("rotateBtn").addEventListener("click", toggleRotate);
 document.addEventListener("keydown", e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.target.closest && e.target.closest("input, textarea")) return;
+  if (!document.getElementById("scrim").hidden) return;   // the pop-up is open
   const k = e.key.toLowerCase();
   const cur = readState().view;
   if (k === "1") setView("columns");
@@ -464,6 +465,41 @@ let resizeTimer = null;
 window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 150); });
 // so a facilitator can also drive the wall by editing the address bar
 window.addEventListener("hashchange", () => { restartRotation(readState()); render(); });
+
+/* ---------------- "Add your idea" on the wall itself ---------------- */
+
+const scrimEl = document.getElementById("scrim");
+const sheetEl = document.getElementById("sheet");
+let sheetForm = null;
+
+// The wall is a shared screen: no remembered names or drafts, and the
+// pop-up closes itself shortly after posting so the next person starts fresh.
+function openAdd(parent){
+  scrimEl.hidden = false;
+  sheetForm = AddForm.mount(sheetEl, {
+    parent: parent || null,
+    source: "hub",
+    rememberName: false,
+    keepDraft: false,
+    resetAfter: 12,
+    idleReset: 120,
+    onClose: closeSheet,
+    // demo mode keeps everything in this browser
+    post: Store.isDemo() ? row => { Store.demoAdd(row); return Promise.resolve("sent"); } : row => Outbox.send(row)
+  });
+}
+
+function closeSheet(){
+  if (sheetForm) sheetForm.destroy();
+  sheetForm = null;
+  scrimEl.hidden = true;
+  sheetEl.innerHTML = "";
+  document.getElementById("addBtn").focus();
+}
+
+document.getElementById("addBtn").addEventListener("click", () => openAdd());
+scrimEl.addEventListener("click", e => { if (e.target === scrimEl) closeSheet(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !scrimEl.hidden) closeSheet(); });
 
 /* ---------------- start ---------------- */
 
