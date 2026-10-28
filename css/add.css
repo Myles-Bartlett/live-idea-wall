@@ -49,7 +49,7 @@
 }
 .af-optional{ font-weight:500; color:#5E6470; }
 
-.af textarea, .af input[type="text"]{
+.af textarea, .af input[type="text"], .af input[type="email"]{
   display:block; width:100%;
   font:inherit; font-size:18px; line-height:1.4;
   color:var(--ink); background:var(--paper);
@@ -57,7 +57,7 @@
   padding:12px 14px;
 }
 .af textarea{ resize:vertical; min-height:6.5em; }
-.af textarea:focus, .af input[type="text"]:focus{
+.af textarea:focus, .af input[type="text"]:focus, .af input[type="email"]:focus{
   outline:3px solid rgba(0,55,103,0.25); outline-offset:0; border-color:var(--navy);
 }
 .af ::placeholder{ color:#80858F; }
@@ -88,6 +88,33 @@
   font-weight:800; color:var(--navy);
 }
 
+/* feelings: two labelled rows of four, neutral styling so they never look
+   like an area colour */
+.af-feel-group{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+.af-feel-tone{
+  grid-column:1 / -1;
+  font-size:13px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+  color:#5E6470;
+}
+.af-feel{
+  position:relative;
+  min-height:48px; padding:8px 30px 8px 12px;
+  text-align:left; font-size:16px; font-weight:600;
+  color:var(--ink); background:var(--paper);
+  border:2px solid #C9D1D8; border-radius:999px; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.af-feel[aria-pressed="true"]{
+  border-color:var(--navy); background:#E6EDF4;
+  box-shadow:0 0 0 1px var(--navy);
+}
+.af-feel[aria-pressed="true"]::after{
+  content:"✓";
+  position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  font-weight:800; color:var(--navy);
+}
+
+.af-help{ margin-top:6px; font-size:14px; line-height:1.4; color:#5E6470; }
 .af-note{ margin-top:18px; font-size:14px; color:#5E6470; }
 .af-error{ margin-top:8px; font-size:15px; font-weight:600; color:#B3261E; }
 
@@ -141,6 +168,7 @@
 @media (min-width: 700px){
   .af-chips{ grid-template-columns:1fr 1fr 1fr; }
   .af-chip:last-child:nth-child(odd){ grid-column:auto; }
+  .af-feel-group{ grid-template-columns:repeat(4, 1fr); }
   .af-actions{ display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
   .af-actions > :only-child{ grid-column:1 / -1; }
 }

@@ -17,7 +17,9 @@ create table if not exists public.ideas (
   hidden      boolean not null default false,
   solo        boolean not null default false,   -- facilitator split it out of an auto-stack
   is_sample   boolean not null default false,   -- test data; remove before the event
-  source      text not null default 'web' check (char_length(source) <= 20)
+  source      text not null default 'web' check (char_length(source) <= 20),
+  feeling     text check (feeling is null or feeling in   -- optional; list matches js/feelings.js
+                ('hopeful','excited','confident','proud','worried','frustrated','uncertain','impatient'))
 );
 create index if not exists ideas_created_idx on public.ideas (created_at);
 
@@ -33,6 +35,14 @@ create table if not exists public.settings (
   updated_at  timestamptz not null default now()
 );
 insert into public.settings (id) values (1) on conflict do nothing;
+
+-- Optional email for a follow-up. Kept OUT of the ideas table on purpose:
+-- ideas are readable by anyone, these are readable only by facilitators.
+create table if not exists public.followups (
+  idea_id     uuid primary key references public.ideas(id) on delete cascade,
+  email       text not null check (char_length(email) <= 254 and email ~* '^[^@[:space:]]+@[^@[:space:]]+[.][^@[:space:]]+$'),
+  created_at  timestamptz not null default now()
+);
 
 create table if not exists public.facilitators (
   user_id   uuid primary key references auth.users(id) on delete cascade,
@@ -60,6 +70,7 @@ grant execute on function public.support_idea(uuid) to anon, authenticated;
 alter table public.ideas        enable row level security;
 alter table public.settings     enable row level security;
 alter table public.facilitators enable row level security;
+alter table public.followups    enable row level security;
 
 -- Ideas: everyone can read (client filters hidden ones, so hide events reach every screen).
 create policy "ideas readable by all" on public.ideas
@@ -78,6 +89,19 @@ create policy "facilitators edit ideas" on public.ideas
   using (public.is_facilitator()) with check (public.is_facilitator());
 
 create policy "facilitators delete ideas" on public.ideas
+  for delete to authenticated using (public.is_facilitator());
+
+-- Follow-up emails: anyone can leave one for a recent idea; only facilitators
+-- can read or delete them. Not added to Realtime, so they are never broadcast.
+create policy "anyone can leave a follow-up email" on public.followups
+  for insert to anon, authenticated
+  with check (exists (select 1 from public.ideas i
+                      where i.id = idea_id and i.created_at > now() - interval '1 day'));
+
+create policy "facilitators read follow-up emails" on public.followups
+  for select to authenticated using (public.is_facilitator());
+
+create policy "facilitators delete follow-up emails" on public.followups
   for delete to authenticated using (public.is_facilitator());
 
 -- Settings: everyone reads, facilitators change.

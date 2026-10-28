@@ -206,6 +206,13 @@ h1{
   background:var(--panel); border:1px solid var(--rule);
   border-radius:999px; padding:0 6px;
 }
+/* new: the feeling the contributor chose, as a small word */
+.note .feeling{
+  font-weight:600; color:var(--ink);
+  background:var(--panel); border:1px solid var(--rule);
+  border-radius:999px; padding:0 7px;
+}
+
 /* The area label: colour alone never tells you the area */
 .note .area{
   margin-left:auto;

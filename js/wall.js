@@ -125,6 +125,8 @@ function renderNote(s, opts){
       '<div class="note-meta">' +
         dotsHtml(s.support) +
         (s.size > 1 ? '<span class="depth" aria-label="' + s.size + ' ideas in this stack">×' + s.size + '</span>' : '') +
+        (lead.feeling ? '<span class="feeling" aria-label="Feels ' + FEELING[lead.feeling].name.toLowerCase() + '">' +
+          escapeHtml(FEELING[lead.feeling].name) + '</span>' : '') +
         '<span class="area">' + escapeHtml(lead.sample ? "Sample · " + area.short : area.short) + '</span>' +
       '</div>' +
     '</div>'

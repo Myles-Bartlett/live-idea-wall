@@ -38,7 +38,8 @@ const Store = (() => {
       hidden: !!r.hidden,
       solo: !!r.solo,
       sample: !!r.is_sample,
-      source: r.source || ""
+      source: r.source || "",
+      feeling: FEELING[r.feeling] ? r.feeling : null
     };
   }
 

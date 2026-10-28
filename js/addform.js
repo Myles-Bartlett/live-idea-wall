@@ -2,15 +2,16 @@
    The "Add your idea" form, then a confirmation screen.
 
    Used full page on phones and tablets (add.html) and in a pop-up on the
-   wall (index.html). One screen, three fields, in order: the idea, its
-   area, and an optional name. Contributing should take under 60 seconds.
+   wall (index.html). One screen: the idea and its area, then three
+   optional extras (a feeling, a name, a private email for a follow-up).
+   Contributing should take under 60 seconds.
 
    AddForm.mount(container, options) draws it. Options:
      parent        {id, text, area} to "build on" an idea, or null
      source        saved with the idea: "phone", "kiosk" or "hub"
-     rememberName  prefill the name next time (personal phones only)
+     rememberName  prefill the name and email next time (personal phones only)
      keepDraft     keep a half-typed idea if the page closes
-     post          async row => "sent" | "queued"   (default: Outbox.send)
+     post          async (row, followup) => "sent" | "queued"   (default: Outbox.send)
      supportHref   where "Support other ideas" goes (omit to hide it)
      onClose       shows Cancel / "Back to the wall" and is called by them
      resetAfter    seconds after posting before the screen clears itself
@@ -23,6 +24,9 @@ const AddForm = (() => {
   const MIN = 3;
   const DRAFT_KEY = "ideawall:draft:v1";
   const NAME_KEY = "ideawall:name:v1";
+  const EMAIL_KEY = "ideawall:email:v1";
+  // Simple shape check; the database checks again.
+  const EMAIL_OK = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
   function esc(s){
     return String(s == null ? "" : s).replace(/[&<>"']/g, m => ({
@@ -38,7 +42,7 @@ const AddForm = (() => {
   function mount(container, options){
     const o = Object.assign({
       parent: null, source: "web", rememberName: true, keepDraft: true,
-      post: row => Outbox.send(row), supportHref: null, onClose: null,
+      post: (row, followup) => Outbox.send(row, followup), supportHref: null, onClose: null,
       resetAfter: 0, idleReset: 0
     }, options);
 
@@ -53,7 +57,11 @@ const AddForm = (() => {
       let draft = {};
       try { if (o.keepDraft && !o.parent) draft = JSON.parse(read(DRAFT_KEY) || "null") || {}; } catch (e) {}
       let area = o.parent ? o.parent.area : (draft.area || "");
+      let feeling = FEELING[draft.feeling] ? draft.feeling : "";
       const name = o.rememberName ? (draft.name || read(NAME_KEY) || "") : "";
+      const email = o.rememberName ? (draft.email || read(EMAIL_KEY) || "") : "";
+      const feelingChip = f => '<button type="button" class="af-feel" data-feeling="' + f.key +
+        '" aria-pressed="' + (f.key === feeling) + '">' + esc(f.name) + '</button>';
 
       container.innerHTML =
         '<form class="af" novalidate>' +
@@ -77,13 +85,33 @@ const AddForm = (() => {
             '<p class="af-error" id="afAreaErr" hidden></p>' +
           '</fieldset>' +
 
+          '<fieldset class="af-field">' +
+            '<legend class="af-label">How do you feel about it? <span class="af-optional">(optional)</span></legend>' +
+            '<div class="af-feel-group" role="group" aria-label="Positive feelings">' +
+              '<span class="af-feel-tone">Positive</span>' +
+              FEELINGS.filter(f => f.tone === "positive").map(feelingChip).join("") +
+            '</div>' +
+            '<div class="af-feel-group" role="group" aria-label="Negative feelings">' +
+              '<span class="af-feel-tone">Negative</span>' +
+              FEELINGS.filter(f => f.tone === "negative").map(feelingChip).join("") +
+            '</div>' +
+          '</fieldset>' +
+
           '<div class="af-field">' +
             '<label class="af-label" for="afName">Your name and college <span class="af-optional">(optional)</span></label>' +
             '<input id="afName" type="text" maxlength="80" autocomplete="name" ' +
               'placeholder="Leave blank to post anonymously">' +
+            '<p class="af-help">Shown on the wall with your idea.</p>' +
           '</div>' +
 
-          '<p class="af-note">Ideas and names appear publicly on the wall.</p>' +
+          '<div class="af-field">' +
+            '<label class="af-label" for="afEmail">Email for a follow-up <span class="af-optional">(optional)</span></label>' +
+            '<input id="afEmail" type="email" maxlength="254" autocomplete="email" inputmode="email" ' +
+              'autocapitalize="off" spellcheck="false" placeholder="you@example.com" aria-describedby="afEmailHelp afEmailErr">' +
+            '<p class="af-help" id="afEmailHelp">Private: never shown on the wall. Sheridan uses it only to follow up about your idea.</p>' +
+            '<p class="af-error" id="afEmailErr" hidden></p>' +
+          '</div>' +
+
           '<p class="af-error" id="afPostErr" role="alert" hidden></p>' +
           '<button type="submit" class="af-post">Post to the wall</button>' +
           (o.onClose ? '<button type="button" class="af-secondary" data-close>Cancel</button>' : '') +
@@ -92,10 +120,12 @@ const AddForm = (() => {
       const form = container.querySelector("form");
       const text = form.querySelector("#afText");
       const nameEl = form.querySelector("#afName");
+      const emailEl = form.querySelector("#afEmail");
       const count = form.querySelector("#afCount");
       const postBtn = form.querySelector(".af-post");
       text.value = o.parent ? "" : (draft.text || "");
       nameEl.value = name;
+      emailEl.value = email;
 
       const err = (id, msg) => {
         const el = form.querySelector("#" + id);
@@ -105,8 +135,9 @@ const AddForm = (() => {
 
       const saveDraft = () => {
         if (!o.keepDraft || o.parent) return;
-        const d = { text: text.value, area, name: o.rememberName ? nameEl.value : "" };
-        write(DRAFT_KEY, d.text || d.area ? JSON.stringify(d) : null);
+        const d = { text: text.value, area, feeling,
+                    name: o.rememberName ? nameEl.value : "", email: o.rememberName ? emailEl.value : "" };
+        write(DRAFT_KEY, d.text || d.area || d.feeling ? JSON.stringify(d) : null);
       };
 
       const updateCount = () => {
@@ -131,6 +162,13 @@ const AddForm = (() => {
 
       text.addEventListener("input", () => { updateCount(); err("afTextErr"); saveDraft(); touched(); });
       nameEl.addEventListener("input", () => { saveDraft(); touched(); });
+      emailEl.addEventListener("input", () => { err("afEmailErr"); saveDraft(); touched(); });
+      // tap a feeling to choose it, tap it again to clear it
+      form.querySelectorAll(".af-feel").forEach(chip => chip.addEventListener("click", () => {
+        feeling = feeling === chip.dataset.feeling ? "" : chip.dataset.feeling;
+        form.querySelectorAll(".af-feel").forEach(c => c.setAttribute("aria-pressed", c.dataset.feeling === feeling ? "true" : "false"));
+        saveDraft(); touched();
+      }));
       form.querySelectorAll(".af-chip").forEach(chip => chip.addEventListener("click", () => {
         area = chip.dataset.area;
         form.querySelectorAll(".af-chip").forEach(c => c.setAttribute("aria-pressed", c === chip ? "true" : "false"));
@@ -145,6 +183,11 @@ const AddForm = (() => {
         let firstBad = null;
         if (ideaText.length < MIN){ err("afTextErr", "Add a few words about your idea."); firstBad = firstBad || text; }
         if (!area){ err("afAreaErr", "Choose the area it fits best. Not sure? Pick “Something else”."); firstBad = firstBad || form.querySelector(".af-chip"); }
+        const emailText = emailEl.value.trim();
+        if (emailText && (!EMAIL_OK.test(emailText) || emailText.length > 254)){
+          err("afEmailErr", "That email doesn’t look right. Check it, or leave it blank.");
+          firstBad = firstBad || emailEl;
+        }
         if (firstBad){ firstBad.focus(); return; }
 
         const personName = tidy(nameEl.value).slice(0, 80);
@@ -156,15 +199,17 @@ const AddForm = (() => {
           parent_id: o.parent ? o.parent.id : null,
           source: o.source
         };
+        if (feeling) row.feeling = feeling;
+        const followup = emailText ? { idea_id: row.id, email: emailText } : null;
 
         postBtn.disabled = true;
         postBtn.textContent = "Posting…";
         err("afPostErr");
         try {
-          const result = await o.post(row);
+          const result = await o.post(row, followup);
           write(DRAFT_KEY, null);
-          if (o.rememberName) write(NAME_KEY, personName || null);
-          showDone(row, result);
+          if (o.rememberName){ write(NAME_KEY, personName || null); write(EMAIL_KEY, emailText || null); }
+          showDone(row, result, followup);
         } catch (e) {
           postBtn.disabled = false;
           postBtn.textContent = "Post to the wall";
@@ -180,7 +225,7 @@ const AddForm = (() => {
 
     /* ---------------- confirmation ---------------- */
 
-    function showDone(row, result){
+    function showDone(row, result, followup){
       clearTimers();
       const a = AREA[row.area];
       const sent = result === "sent";
@@ -194,6 +239,7 @@ const AddForm = (() => {
               '<strong>' + esc(a.name) + '</strong> on its own as soon as the connection is back. ' +
               'Please keep this page open.</p>') +
           '<blockquote class="af-quote" data-area="' + row.area + '">' + esc(row.text) + '</blockquote>' +
+          (followup ? '<p class="af-help">We’ll follow up at ' + esc(followup.email) + '.</p>' : '') +
           '<div class="af-actions">' +
             (o.supportHref ? '<a class="af-post" href="' + esc(o.supportHref) + '">Support other ideas</a>' : '') +
             (o.onClose ? '<button type="button" class="af-post" data-close>Back to the wall</button>' : '') +

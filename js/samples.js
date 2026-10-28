@@ -63,7 +63,8 @@ const Samples = (() => {
         hidden: false,
         solo: round > 0,
         is_sample: true,
-        source: "demo"
+        source: "demo",
+        feeling: i % 3 === 2 ? null : FEELINGS[(i * 5) % FEELINGS.length].key
       });
     }
     return out;
