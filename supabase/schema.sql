@@ -12,7 +12,8 @@ create table if not exists public.ideas (
   area        text not null check (area in
                 ('talent','innovation','productivity','community','industry','students','other')),
   name        text check (name is null or char_length(name) <= 80),
-  parent_id   uuid references public.ideas(id) on delete set null,
+  parent_id   uuid references public.ideas(id) on delete set null,   -- posted as a reply ("Build on this idea")
+  stack_id    uuid references public.ideas(id) on delete set null,   -- grouped into this stack by a facilitator
   votes       integer not null default 0 check (votes >= 0),
   hidden      boolean not null default false,
   solo        boolean not null default false,   -- facilitator split it out of an auto-stack
@@ -81,7 +82,7 @@ create policy "anyone can post ideas" on public.ideas
   for insert to anon, authenticated
   with check (
     public.is_facilitator()
-    or (votes = 0 and hidden = false and solo = false and is_sample = false)
+    or (votes = 0 and hidden = false and solo = false and is_sample = false and stack_id is null)
   );
 
 create policy "facilitators edit ideas" on public.ideas

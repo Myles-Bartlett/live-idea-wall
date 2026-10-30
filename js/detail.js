@@ -57,7 +57,8 @@ async function supportIdea(id){
 function memberHtml(m){
   const bits = [m.name, m.feeling ? "Feels " + FEELING[m.feeling].name.toLowerCase() : ""].filter(Boolean);
   return '<li><p>' + escapeHtml(m.text) + '</p>' +
-    (bits.length ? '<small>' + escapeHtml(bits.join(" · ")) + '</small>' : '') + '</li>';
+    (bits.length ? '<small>' + escapeHtml(bits.join(" · ")) + '</small>' : '') +
+    Facil.memberButtons(m) + '</li>';
 }
 
 // id: any idea's id; the pop-up shows the whole stack it belongs to.
@@ -68,8 +69,9 @@ function openDetail(id){
   if (!s) return;
   const lead = s.root, area = AREA[s.area];
   const others = s.members.filter(m => m !== lead);
-  const similar = others.filter(m => !m.parentId);
-  const replies = others.filter(m => m.parentId);
+  const similar = others.filter(m => !m.parentId && !m.stackId);
+  const replies = others.filter(m => m.parentId && !m.stackId);
+  const grouped = others.filter(m => m.stackId);
   const byBits = [lead.name, lead.feeling ? "Feels " + FEELING[lead.feeling].name.toLowerCase() : ""].filter(Boolean);
   const blocked = supportBlocked(rootId);
 
@@ -93,8 +95,12 @@ function openDetail(id){
         : similar.length + " more people said something similar") + '</h3><ul class="members">' + similar.map(memberHtml).join("") + '</ul>' : '') +
       (replies.length ? '<h3 class="detail-h">Built on this idea (' + replies.length + ')</h3><ul class="members">' +
         replies.map(memberHtml).join("") + '</ul>' : '') +
+      (grouped.length ? '<h3 class="detail-h">Grouped here by a facilitator (' + grouped.length + ')</h3><ul class="members">' +
+        grouped.map(memberHtml).join("") + '</ul>' : '') +
+      Facil.detailTools(s) +
     '</div>'
   );
+  Facil.wireDetail(sheet, s);
 
   const btn = sheet.querySelector("#supportBtn");
   btn.addEventListener("click", async () => {

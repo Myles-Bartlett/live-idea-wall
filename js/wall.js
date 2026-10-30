@@ -290,6 +290,8 @@ function renderLatest(ideas, model, state){
 
 // Many changes can arrive at once; draw at most once per frame.
 function render(){
+  // never redraw under a note a facilitator is dragging
+  if (typeof Facil !== "undefined" && Facil.dragging()){ setTimeout(render, 250); return; }
   if (renderQueued) return;
   renderQueued = true;
   requestAnimationFrame(() => { renderQueued = false; draw(); });
@@ -451,6 +453,7 @@ function startPaging(){
   setInterval(() => {
     if (boardEl.dataset.view !== "columns") return;
     if (Date.now() < pagePausedUntil) return;
+    if (typeof Facil !== "undefined" && Facil.dragging()) return;
     boardEl.querySelectorAll(".col-body").forEach(body => {
       if (body.querySelector(".more-chip")) advanceColumn(body);
     });
@@ -656,6 +659,7 @@ document.getElementById("findBtn").addEventListener("click", () => openFind());
 
 // Tap (or Enter on) any note to open its details.
 boardEl.addEventListener("click", e => {
+  if (typeof Facil !== "undefined" && Facil.justDragged()) return;   // that was a drag, not a tap
   const note = e.target.closest(".note");
   if (note) openDetail(note.dataset.id);
 });

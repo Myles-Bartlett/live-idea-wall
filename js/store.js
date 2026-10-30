@@ -33,7 +33,8 @@ const Store = (() => {
       text: r.text || "",
       area: AREA[r.area] ? r.area : "other",
       name: r.name || "",
-      parentId: r.parent_id || null,
+      parentId: r.parent_id || null,     // posted as a reply
+      stackId: r.stack_id || null,       // grouped by a facilitator
       votes: r.votes || 0,
       hidden: !!r.hidden,
       solo: !!r.solo,
@@ -192,10 +193,30 @@ const Store = (() => {
     changed();
   }
 
+  // Same, but the patch uses database column names (as sent to Supabase).
+  const LOCAL_NAME = { parent_id: "parentId", stack_id: "stackId", is_sample: "sample" };
+  function patchRow(id, rowPatch){
+    const local = {};
+    for (const k in rowPatch) local[LOCAL_NAME[k] || k] = rowPatch[k];
+    patchLocal(id, local);
+  }
+
+  function removeLocal(id){ if (ideas.delete(id)) changed(); }
+
+  function patchSettingsLocal(rowPatch){
+    settings = settingsFromRow(Object.assign({
+      notes: settings.notes, summary: settings.summary, show_other: settings.showOther, view: settings.view
+    }, rowPatch));
+    changed();
+  }
+
   return {
     start,
     demoAdd,
     patchLocal,
+    patchRow,
+    removeLocal,
+    patchSettingsLocal,
     isDemo: () => status === "demo",
     onChange: fn => changeListeners.add(fn),
     onStatus: fn => statusListeners.add(fn),

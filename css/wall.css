@@ -427,6 +427,49 @@ footer{
 .status[data-state="live"]::before{ background:#7CE08F; }
 .status[data-state="demo"]::before{ background:#fff; }
 
+/* ---------------- facilitator mode ---------------- */
+.facil-strip{
+  flex-shrink:0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:8px clamp(16px,3vw,48px);
+  background:var(--yellow); color:var(--navy);
+  font-size:clamp(13px,0.75vw,16px); line-height:1.35;
+}
+.facil-strip > span{ flex:1; min-width:240px; }
+.facil-btn, .facil-chip{
+  font:inherit; font-size:14px; font-weight:700;
+  min-height:40px; padding:6px 14px; cursor:pointer;
+  color:var(--navy); background:var(--paper);
+  border:2px solid var(--navy); border-radius:999px;
+}
+.facil-btn:disabled{ opacity:0.6; cursor:default; }
+.facil-chip{ border-color:var(--rule); border-left:8px solid var(--accent); border-radius:8px; }
+.facil-chip[aria-pressed="true"]{ border-color:var(--navy); border-left-color:var(--accent); background:#E6EDF4; }
+.facil-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.facil-tools{ margin-top:24px; padding-top:6px; border-top:2px dashed var(--rule); }
+.facil-rule{ margin-top:12px; padding:10px 12px; border-radius:8px; background:#FFF4D6; color:#5A3D00; font-size:15px; line-height:1.45; }
+.facil-switch{ display:flex; align-items:center; gap:10px; margin-top:6px; font-size:16px; }
+.facil-switch input{ width:22px; height:22px; }
+.facil-panel .facil-btn{ margin-top:8px; }
+
+.gear-btn{
+  flex-shrink:0; width:40px; height:40px; border-radius:50%;
+  display:grid; place-items:center; cursor:pointer;
+  color:rgba(255,255,255,0.85); background:transparent;
+  border:1px solid rgba(255,255,255,0.4);
+}
+.gear-btn:focus-visible{ outline:3px solid #fff; outline-offset:2px; }
+
+/* dragging: the note under the finger, where it came from, and where it will land */
+body.facil .note{ touch-action:none; user-select:none; -webkit-user-select:none; }
+.drag-ghost{
+  position:fixed; left:0; top:0; z-index:60; pointer-events:none;
+  margin:0 !important; opacity:0.92;
+  box-shadow:0 12px 32px rgba(0,25,50,0.3);
+}
+.note.lifted{ opacity:0.35; }
+.note.drop-target{ box-shadow:0 0 0 3px var(--navy), 0 0 0 6px var(--yellow); }
+.column.drop-target{ outline:3px dashed var(--navy); outline-offset:-4px; }
+
 /* ---------------- idea details and Find my idea (pop-ups) ---------------- */
 .sheet-close{
   position:absolute; top:12px; right:12px;

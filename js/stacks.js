@@ -5,6 +5,7 @@
      - near-duplicates in the same area join automatically, unless a
        facilitator split them out (solo)
      - "build on this idea" replies (parent_id) always join their parent's stack
+     - ideas a facilitator dragged onto another (stack_id) join that stack
    Behaviour ported from reference/hub-edition.html.
    ============================================================ */
 
@@ -43,7 +44,8 @@ const Stacks = (() => {
     const rootOf = {};          // any idea id -> its stack's root id
     const tokenCache = {};
 
-    for (const idea of sorted.filter(i => !i.parentId)){
+    const linkOf = i => i.stackId || i.parentId;   // the idea this one is attached to
+    for (const idea of sorted.filter(i => !linkOf(i))){
       tokenCache[idea.id] = tokens(idea.text);
       let hit = null;
       if (!idea.solo){
@@ -55,19 +57,19 @@ const Stacks = (() => {
       else { stacks.set(idea.id, { root: idea, area: idea.area, members: [idea] }); rootOf[idea.id] = idea.id; }
     }
 
-    // Replies join their parent's stack. Repeat so a reply to a reply also lands.
-    let rest = sorted.filter(i => i.parentId), placed = true;
+    // Replies and grouped ideas join their stack. Repeat so a reply to a reply also lands.
+    let rest = sorted.filter(i => linkOf(i)), placed = true;
     while (rest.length && placed){
       placed = false;
       const next = [];
       for (const idea of rest){
-        const root = rootOf[idea.parentId];
+        const root = rootOf[linkOf(idea)];
         if (root){ stacks.get(root).members.push(idea); rootOf[idea.id] = root; placed = true; }
         else next.push(idea);
       }
       rest = next;
     }
-    // A reply whose parent is hidden or gone stands on its own.
+    // One whose stack is hidden or gone stands on its own.
     for (const idea of rest){ stacks.set(idea.id, { root: idea, area: idea.area, members: [idea] }); rootOf[idea.id] = idea.id; }
 
     const now = Date.now();
