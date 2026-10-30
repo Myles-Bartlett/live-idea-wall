@@ -121,14 +121,31 @@ const Facil = (() => {
     if (!demo()){
       const { data, error } = await client().from("ideas").update(patch).eq("id", id).select("id");
       if (error || !data || !data.length){
-        console.warn("Idea wall: update refused", error);
-        showToast(error && error.code === "23514" ? "That change isn’t allowed (check the text length)."
-                                                  : "That didn’t save. You may need to sign in again.", true);
+        console.warn("Idea wall: update refused", error, patch);
+        showToast(saveProblem(error), true);
         return false;
       }
     }
     Store.patchRow(id, patch);
     return true;
+  }
+
+  // A plain-English reason a change did not save.
+  function saveProblem(error){
+    if (!error) return "That didn’t save: the database says this account can’t change it. Try signing out and in again.";
+    if (error.code === "23514") return "That change isn’t allowed (check the text length).";
+    if (error.code === "42703" || error.code === "PGRST204")
+      return "That didn’t save: the database is missing an update. Run supabase/003-facilitator-stacks.sql in Supabase.";
+    if (!error.code) return "That didn’t save: no connection to the database. Check the internet and try again.";
+    return "That didn’t save (" + error.code + "). Try signing out and in again.";
+  }
+
+  // Taking an idea out of its stack. Only mention stack_id when it is set,
+  // so moving and splitting work even before update 3 has been run.
+  function detach(idea, extra){
+    const patch = Object.assign({ parent_id: null, solo: true }, extra || {});
+    if (idea && idea.stackId) patch.stack_id = null;
+    return patch;
   }
   const updateAll = (ids, patch) => Promise.all(ids.map(id => updateIdea(id, patch))).then(r => r.every(Boolean));
 
@@ -149,7 +166,7 @@ const Facil = (() => {
   }
 
   // Take one idea out of its stack, and keep auto-stacking from pulling it back.
-  const split = id => updateIdea(id, { parent_id: null, stack_id: null, solo: true });
+  const split = id => updateIdea(id, detach(Store.ideas().find(i => i.id === id)));
 
   // Put these ideas into the stack led by toRootId.
   async function mergeInto(ids, toRootId){
@@ -263,7 +280,7 @@ const Facil = (() => {
       if (newText !== idea.text && !await updateIdea(id, { text: newText })) return;
       if (area !== idea.area){
         if (isLead) await moveStack(id, area);
-        else await updateIdea(id, { area, parent_id: null, stack_id: null, solo: true });
+        else await updateIdea(id, detach(idea, { area }));
       }
       showToast("Saved.", false);
       back();
@@ -279,11 +296,29 @@ const Facil = (() => {
     document.querySelectorAll(".drop-target").forEach(el => el.classList.remove("drop-target"));
   }
 
+  // What letting go here would do. Stacking needs the finger squarely on a
+  // note (its middle part); anywhere else in a column moves to that area.
+  function dropAction(x, y, d){
+    const under = document.elementFromPoint(x, y);
+    if (!under) return null;
+    const from = stackOf(d.id);
+    const note = under.closest(".note:not(.lifted)");
+    if (note){
+      const r = note.getBoundingClientRect();
+      const middle = y > r.top + r.height * 0.2 && y < r.bottom - r.height * 0.2;
+      const to = stackOf(note.dataset.id);
+      if (middle && to && (!from || to.root.id !== from.root.id)) return { kind: "stack", el: note, to };
+    }
+    const column = under.closest(".column");
+    if (column && from && column.dataset.area !== from.area) return { kind: "move", el: column, area: column.dataset.area };
+    return null;
+  }
+
   boardEl.addEventListener("pointerdown", e => {
     if (!active || e.button !== 0) return;
     const note = e.target.closest(".note");
     if (!note || note.classList.contains("latest-note")) return;
-    drag = { id: note.dataset.id, el: note, x: e.clientX, y: e.clientY, moving: false, ghost: null };
+    drag = { id: note.dataset.id, el: note, x: e.clientX, y: e.clientY, moving: false, ghost: null, hint: null };
   });
 
   window.addEventListener("pointermove", e => {
@@ -297,15 +332,21 @@ const Facil = (() => {
       drag.ghost.classList.add("drag-ghost");
       drag.ghost.style.width = r.width + "px";
       document.body.appendChild(drag.ghost);
+      drag.hint = document.createElement("div");
+      drag.hint.className = "drag-hint";
+      document.body.appendChild(drag.hint);
       drag.el.classList.add("lifted");
     }
     drag.ghost.style.transform = "translate(" + (e.clientX - drag.ox) + "px," + (e.clientY - drag.oy) + "px)";
+    drag.hint.style.transform = "translate(" + (e.clientX + 18) + "px," + (e.clientY + 22) + "px)";
     clearDropMarks();
-    const under = document.elementFromPoint(e.clientX, e.clientY);
-    const onNote = under && under.closest(".note:not(.lifted)");
-    const onColumn = under && under.closest(".column");
-    if (onNote) onNote.classList.add("drop-target");
-    else if (onColumn) onColumn.classList.add("drop-target");
+    const act = dropAction(e.clientX, e.clientY, drag);
+    if (act) act.el.classList.add("drop-target");
+    // say what will happen before the finger lifts
+    drag.hint.textContent = !act ? "Drop on a column to move, or on the middle of a note to stack"
+      : act.kind === "stack" ? "Stack with this idea"
+      : "Move to " + AREA[act.area].name;
+    drag.hint.classList.toggle("ready", !!act);
   });
 
   function endDrag(e, cancelled){
@@ -313,25 +354,23 @@ const Facil = (() => {
     const d = drag;
     drag = null;
     if (!d.moving) return;          // a tap: the click opens the pop-up as usual
+    const act = cancelled ? null : dropAction(e.clientX, e.clientY, d);
     d.ghost.remove();
+    d.hint.remove();
     d.el.classList.remove("lifted");
     clearDropMarks();
     justDragged = true;
     setTimeout(() => { justDragged = false; }, 60);
-    if (cancelled){ render(); return; }
 
-    const under = document.elementFromPoint(e.clientX, e.clientY);
-    const onNote = under && under.closest(".note");
-    const onColumn = under && under.closest(".column");
     const from = stackOf(d.id);
-    // stacked view: the whole stack moves; unstacked view: just that idea
-    const ids = readState().stacked && from ? from.members.map(m => m.id) : [d.id];
-    if (onNote && onNote !== d.el){
-      const to = stackOf(onNote.dataset.id);
-      if (to && (!from || to.root.id !== from.root.id)) mergeInto(ids, to.root.id);
-    } else if (onColumn && from && onColumn.dataset.area !== from.area){
-      if (readState().stacked) moveStack(from.root.id, onColumn.dataset.area);
-      else updateIdea(d.id, { area: onColumn.dataset.area, parent_id: null, stack_id: null, solo: true });
+    const stacked = readState().stacked;
+    // stacked view: the whole stack goes; unstacked view: just that idea
+    if (act && act.kind === "stack"){
+      mergeInto(stacked && from ? from.members.map(m => m.id) : [d.id], act.to.root.id);
+    } else if (act && act.kind === "move"){
+      if (stacked && from) moveStack(from.root.id, act.area);
+      else updateIdea(d.id, detach(Store.ideas().find(i => i.id === d.id), { area: act.area }))
+        .then(ok => { if (ok) showToast("Moved to " + AREA[act.area].name + ".", false); });
     }
     render();
   }
@@ -413,7 +452,7 @@ const Facil = (() => {
     if (!demo()){
       const { data, error } = await client().from("settings").update(patch).eq("id", 1).select("id");
       if (error || !data || !data.length){
-        showToast("That didn’t save. You may need to sign in again.", true);
+        showToast(saveProblem(error), true);
         return false;
       }
     }
