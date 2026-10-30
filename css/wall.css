@@ -355,7 +355,8 @@ h1{
 footer{
   display:flex; align-items:center; gap:20px;
   padding:clamp(8px,1.2vh,14px) clamp(24px,3vw,48px);
-  background:linear-gradient(90deg, var(--navy), var(--teal));
+  /* ends a touch deeper than --teal so the white text on the right passes AA contrast */
+  background:linear-gradient(90deg, var(--navy), #007E93);
   color:#fff;
   flex-shrink:0;
 }

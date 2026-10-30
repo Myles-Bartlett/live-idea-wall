@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR sign · Sheridan Idea Wall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css?v=9">
+<style>
+  /* A printable sign for the booth: US Letter, portrait. Print at 100% (no "fit to page"),
+     or print on tabloid / 11x17 and it scales up. The QR code is vector, so it stays sharp. */
+  @page{ size:letter portrait; margin:0.5in; }
+
+  body{ background:var(--panel); }
+  .page{
+    width:7.5in; min-height:9.8in; margin:24px auto; padding:0.4in 0.6in;
+    background:var(--paper);
+    border-top:0.18in solid var(--navy);
+    box-shadow:0 4px 24px rgba(0,55,103,0.12);
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+  }
+  .top{ width:100%; display:flex; align-items:center; justify-content:space-between; }
+  .top img{ height:0.5in; width:auto; }
+  .tag{
+    font-size:13pt; font-weight:800; letter-spacing:0.12em; text-transform:uppercase;
+    color:#fff; background:var(--pink); padding:5pt 14pt; border-radius:999px;
+  }
+  h1{
+    margin-top:0.3in;
+    font-size:30pt; line-height:1.15; font-weight:800; color:var(--navy);
+  }
+  .qr{
+    margin-top:0.3in; padding:0.12in;
+    border:3pt solid var(--navy); border-radius:0.18in;
+  }
+  .qr img{ display:block; width:3.6in; height:3.6in; }
+  .scan{ margin-top:0.25in; font-size:26pt; font-weight:800; color:var(--navy); }
+  .how{ margin-top:6pt; font-size:14pt; color:var(--ink); }
+  .areas{
+    margin-top:0.25in; display:flex; flex-wrap:wrap; justify-content:center; gap:6pt 8pt;
+  }
+  .areas span{
+    font-size:11pt; font-weight:700; color:var(--ink);
+    border:1.5pt solid var(--rule); border-left:7pt solid var(--accent);
+    border-radius:5pt; padding:3pt 9pt;
+  }
+  .url{ margin-top:auto; padding-top:0.2in; font-size:11pt; color:var(--muted); }
+  .url strong{ color:var(--navy); }
+
+  .print-btn{
+    display:block; margin:16px auto 0; padding:12px 28px;
+    font:inherit; font-size:17px; font-weight:700;
+    color:#fff; background:var(--navy); border:0; border-radius:999px; cursor:pointer;
+  }
+  @media print{
+    body{ background:#fff; }
+    .page{ margin:0; box-shadow:none; width:auto; min-height:9.8in;
+           -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .print-btn{ display:none; }
+  }
+  @media screen and (max-width: 8in){
+    .page{ width:auto; margin:12px; transform-origin:top center; }
+  }
+</style>
+</head>
+<body>
+
+<button class="print-btn" type="button" onclick="window.print()">Print this sign</button>
+
+<main class="page">
+  <div class="top">
+    <img src="assets/logo-sheridan.png" alt="Sheridan">
+    <span class="tag">Idea Wall</span>
+  </div>
+
+  <h1>How might Ontario&rsquo;s colleges power growth over the next ten years?</h1>
+
+  <div class="qr"><img src="assets/qr-code.svg" alt="QR code: opens the Add your idea form"></div>
+  <p class="scan">Scan to add your idea</p>
+  <p class="how">Under a minute &middot; your name is optional &middot; watch it land on the wall</p>
+
+  <div class="areas" aria-label="The opportunity areas">
+    <span data-area="talent">Talent</span>
+    <span data-area="innovation">Innovation</span>
+    <span data-area="productivity">Productivity</span>
+    <span data-area="community">Community Resilience</span>
+    <span data-area="industry">Industry Transformation</span>
+    <span data-area="students">Student Success</span>
+  </div>
+
+  <p class="url">No camera? Go to <strong>myles-bartlett.github.io/live-idea-wall/#add</strong></p>
+</main>
+
+</body>
+</html>
