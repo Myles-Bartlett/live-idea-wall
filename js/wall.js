@@ -6,7 +6,9 @@
      recent:  every idea, newest first, filling the whole wall
      top:     every idea, most supported first, the leaders enlarged
      latest:  only the most recent idea, large
-   plus filters (one area, one feeling), a stacked/unstacked toggle and
+   and the closing summary, which facilitators switch on for every screen
+   (settings.view = "summary") or preview on one screen. Also
+   filters (one area, one feeling), a stacked/unstacked toggle and
    auto-rotate. Keys 1-4, S, A and the arrow keys drive it too.
 
    The current view lives in the URL hash (#v=columns&s=1&r=0&a=talent&f=positive),
@@ -37,6 +39,8 @@ const viewbarEl    = document.getElementById("viewbar");
 const tallyBigEl   = document.getElementById("tallyBig");
 const tallySmallEl = document.getElementById("tallySmall");
 const tallyTodayEl = document.getElementById("tallyToday");
+const subtitleEl   = document.getElementById("subtitle");
+const previewBarEl = document.getElementById("previewBar");
 
 const offsets = new Map();     // area key -> index of the first note shown (paging)
 let seen = null;               // root ids drawn last time; null before the first draw
@@ -45,7 +49,8 @@ let pagePausedUntil = 0;
 let renderQueued = false;
 let noteIdx = 0;
 let lastModel = null;
-let latestShownId = null;      // the idea the Latest view showed last time          // the latest stacks, for the pop-ups (js/detail.js)
+let latestShownId = null;      // the idea the Latest view showed last time
+let previewSummary = false;    // a facilitator previewing the summary on this screen only          // the latest stacks, for the pop-ups (js/detail.js)
 const spotlit = new Map();     // root id -> time "Find my idea" picked it
 
 // A phone or small tablet held by one person, rather than the shared Hub.
@@ -159,6 +164,11 @@ function screenScale(){
 function setDensity(view, columnCount, noteCount){
   const root = document.documentElement;
   let fs;
+  if (view === "summary"){
+    root.style.setProperty("--note-fs", (isPhoneLayout() ? 15 : 14 * screenScale()).toFixed(1) + "px");
+    boardEl.dataset.density = "1";
+    return;
+  }
   if (isPhoneLayout()){
     // phones scroll, so every note shows in full at a comfortable size
     root.style.setProperty("--mcols", 1);
@@ -286,6 +296,84 @@ function renderLatest(ideas, model, state){
   );
 }
 
+/* ---------------- the closing summary ---------------- */
+
+const SUBTITLE_WALL = "Add your idea · connect it to others · watch the wall take shape";
+const SUBTITLE_SUMMARY = "What delegates told us, across the six opportunity areas";
+
+// Strongest first: most support, then the biggest stack, then the newest.
+const bySupport = (a, b) => (b.support - a.support) || (b.size - a.size) || (b.latest - a.latest);
+
+// The facilitators' synthesis, the five most supported ideas, and the
+// strongest idea in each of the six areas.
+function renderSummary(stacks, settings, total){
+  const paras = String(settings.summary || "").split(/\n\s*\n|\n/).map(p => p.trim()).filter(Boolean);
+  const top = stacks.slice().sort(bySupport).slice(0, 5);
+  const six = AREAS.filter(a => a.key !== "other");
+  const areasUsed = six.filter(a => stacks.some(x => x.area === a.key)).length;
+
+  const tiles = six.map(a => {
+    const mine = stacks.filter(x => x.area === a.key);
+    const count = mine.reduce((n, x) => n + x.size, 0);
+    const best = mine.slice().sort(bySupport)[0];
+    return (
+      '<section class="sum-tile" data-area="' + a.key + '"' +
+        (best ? ' data-id="' + escapeHtml(best.root.id) + '" role="button" tabindex="0"' : '') + '>' +
+        '<h3><span class="swatch"></span>' + escapeHtml(a.name) + '</h3>' +
+        '<small>' + plural(count, "idea", "ideas") +
+          (best && best.size > 1 ? ' · strongest theme raised ' + best.size + ' times' : '') + '</small>' +
+        '<p>' + (best ? escapeHtml(best.root.text) : 'No ideas in this area yet.') + '</p>' +
+        (best && best.support ? dotsHtml(best.support) : '') +
+      '</section>'
+    );
+  }).join("");
+
+  return (
+    '<section class="sum-synth">' +
+      '<p class="sum-kicker">What we heard</p>' +
+      '<div class="sum-text">' + (paras.length
+        ? paras.map(p => '<p>' + escapeHtml(p) + '</p>').join("")
+        : '<p class="sum-placeholder">The facilitators’ closing synthesis appears here. ' +
+          'Write it in the facilitator panel (gear icon).</p>') + '</div>' +
+      '<p class="sum-total"><strong>' + total + '</strong> ' + (total === 1 ? "idea" : "ideas") +
+        ' across ' + plural(areasUsed, "opportunity area", "opportunity areas") + '</p>' +
+    '</section>' +
+    '<section class="sum-top">' +
+      '<p class="sum-kicker">Most supported ideas</p>' +
+      '<div class="sum-top-list">' + (top.length
+        ? top.map((x, i) => renderNote(x, { rank: i + 1 })).join("")
+        : '<p class="col-empty">No ideas yet.</p>') + '</div>' +
+    '</section>' +
+    '<div class="sum-tiles">' + tiles + '</div>'
+  );
+}
+
+// The summary never scrolls on the Hub: a long synthesis steps its type
+// down until it fits, and top ideas that do not fit are left off.
+function fitSummary(){
+  const synth = boardEl.querySelector(".sum-text");
+  if (synth){
+    synth.style.fontSize = "";
+    let size = parseFloat(getComputedStyle(synth).fontSize);
+    while (synth.scrollHeight > synth.clientHeight + 1 && size > 14){
+      size -= 1;
+      synth.style.fontSize = size + "px";
+    }
+  }
+  const list = boardEl.querySelector(".sum-top-list");
+  if (list){
+    const box = list.closest(".sum-top");
+    const notes = [...list.querySelectorAll(".note")];
+    for (let i = notes.length - 1; i > 0 && box.scrollHeight > box.clientHeight + 1; i--) notes[i].style.display = "none";
+  }
+}
+
+// Facilitators: show the summary on this screen only (true) or stop (false).
+function setSummaryPreview(on){
+  previewSummary = on;
+  render();
+}
+
 /* ---------------- render ---------------- */
 
 // Many changes can arrive at once; draw at most once per frame.
@@ -316,10 +404,18 @@ function draw(){
     if (t && now - t < Stacks.FRESH_MS){ x.isFresh = true; x.freshAt = Math.max(x.freshAt, t); x.found = true; }
   }
 
+  // The closing summary replaces every view while it is on.
+  const summaryOn = settings.view === "summary";
+  const summary = summaryOn || previewSummary;
   // One area picked in the Areas view: that area fills the wall as tiles.
-  const layout = (s.view === "columns" && s.area) ? "area" : s.view;
+  const layout = summary ? "summary" : (s.view === "columns" && s.area) ? "area" : s.view;
   boardEl.dataset.view = layout;
   boardEl.classList.remove("has-more");
+  document.body.classList.toggle("summary-mode", summary);
+  subtitleEl.textContent = summary ? SUBTITLE_SUMMARY : SUBTITLE_WALL;
+  previewBarEl.hidden = !(previewSummary && !summaryOn);
+  const stripView = document.getElementById("stripView");
+  if (stripView) stripView.textContent = summaryOn ? "Back to the live wall" : "Show closing summary";
 
   const empty = filtering
     ? '<p class="board-message">No ideas match ' + escapeHtml(filterLabel(s)) + ' yet.</p>'
@@ -327,6 +423,9 @@ function draw(){
   if (Store.status() === "error"){
     boardEl.innerHTML = '<p class="board-message">The wall can’t reach its database.<br>' +
       'Check config.js and the internet connection.</p>';
+  } else if (layout === "summary"){
+    setDensity("summary");
+    boardEl.innerHTML = renderSummary(model.stacks, settings, visible.length);
   } else if (layout === "columns"){
     boardEl.innerHTML = renderColumns(stacks, settings);
   } else if (layout === "latest"){
@@ -362,7 +461,9 @@ function draw(){
   tallyTodayEl.hidden = !(today > 0 && today < visible.length);
 
   if (isPhoneLayout() || layout === "latest") return;   // phones scroll; Latest is one note
-  if (layout === "columns") fitColumns(); else fitFlow();
+  if (layout === "summary") fitSummary();
+  else if (layout === "columns") fitColumns();
+  else fitFlow();
 }
 
 /* Nobody scrolls a wall. In the Areas view a column holding more ideas than
@@ -660,11 +761,11 @@ document.getElementById("findBtn").addEventListener("click", () => openFind());
 // Tap (or Enter on) any note to open its details.
 boardEl.addEventListener("click", e => {
   if (typeof Facil !== "undefined" && Facil.justDragged()) return;   // that was a drag, not a tap
-  const note = e.target.closest(".note");
+  const note = e.target.closest(".note, .sum-tile[data-id]");
   if (note) openDetail(note.dataset.id);
 });
 boardEl.addEventListener("keydown", e => {
-  const note = e.target.closest(".note");
+  const note = e.target.closest(".note, .sum-tile[data-id]");
   if (note && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); openDetail(note.dataset.id); }
 });
 

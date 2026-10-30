@@ -17,9 +17,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@1,8..60,500&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <!-- ?v= makes browsers fetch fresh files after an update: raise it on every release. -->
-<link rel="stylesheet" href="css/base.css?v=6">
-<link rel="stylesheet" href="css/wall.css?v=6">
-<link rel="stylesheet" href="css/add.css?v=6">
+<link rel="stylesheet" href="css/base.css?v=8">
+<link rel="stylesheet" href="css/wall.css?v=8">
+<link rel="stylesheet" href="css/add.css?v=8">
 </head>
 <body class="wall">
 
@@ -27,6 +27,7 @@
 <div class="facil-strip" id="facilStrip" hidden>
   <span><strong>Facilitator mode</strong> (<span class="facil-who"></span>).
     Drag a note onto another to stack them, or onto a column to move it. Tap a note to edit, hide or split it.</span>
+  <button type="button" class="facil-btn" id="stripView">Show closing summary</button>
   <button type="button" class="facil-btn" id="stripPanel">Facilitator panel</button>
   <button type="button" class="facil-btn" id="stripOut">Sign out</button>
 </div>
@@ -38,7 +39,7 @@
       <span class="tag">Idea Wall</span>
     </div>
     <h1>How might Ontario&rsquo;s colleges power growth over the next ten years?</h1>
-    <div class="subtitle">Add your idea &middot; connect it to others &middot; watch the wall take shape</div>
+    <div class="subtitle" id="subtitle">Add your idea &middot; connect it to others &middot; watch the wall take shape</div>
   </div>
   <img class="logo logo-right" src="assets/logo-apple-distinguished-school.png" alt="Apple Distinguished School">
 
@@ -57,6 +58,12 @@
     <button class="vbtn" type="button" id="rotateBtn">Auto<span class="k">A</span></button>
   </div>
 </header>
+
+<!-- Shown while a facilitator previews the closing summary on this screen only -->
+<div class="preview-bar" id="previewBar" hidden>
+  <span><strong>Preview:</strong> only this screen shows the closing summary. Every other screen still shows the live wall.</span>
+  <button type="button" class="facil-btn" id="endPreview">End preview</button>
+</div>
 
 <main class="board" id="board" data-view="columns" aria-label="Ideas by opportunity area"></main>
 
@@ -93,17 +100,17 @@
 
 <!-- Supabase client, pinned to an exact version. Change it only on purpose, after testing. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
-<script src="config.js?v=6"></script>
-<script src="js/areas.js?v=6"></script>
-<script src="js/feelings.js?v=6"></script>
-<script src="js/samples.js?v=6"></script>
-<script src="js/db.js?v=6"></script>
-<script src="js/outbox.js?v=6"></script>
-<script src="js/addform.js?v=6"></script>
-<script src="js/stacks.js?v=6"></script>
-<script src="js/store.js?v=6"></script>
-<script src="js/wall.js?v=6"></script>
-<script src="js/detail.js?v=6"></script>
-<script src="js/facilitator.js?v=6"></script>
+<script src="config.js?v=8"></script>
+<script src="js/areas.js?v=8"></script>
+<script src="js/feelings.js?v=8"></script>
+<script src="js/samples.js?v=8"></script>
+<script src="js/db.js?v=8"></script>
+<script src="js/outbox.js?v=8"></script>
+<script src="js/addform.js?v=8"></script>
+<script src="js/stacks.js?v=8"></script>
+<script src="js/store.js?v=8"></script>
+<script src="js/wall.js?v=8"></script>
+<script src="js/detail.js?v=8"></script>
+<script src="js/facilitator.js?v=8"></script>
 </body>
 </html>

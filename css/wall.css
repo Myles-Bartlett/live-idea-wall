@@ -427,6 +427,96 @@ footer{
 .status[data-state="live"]::before{ background:#7CE08F; }
 .status[data-state="demo"]::before{ background:#fff; }
 
+/* ---------------- the closing summary ---------------- */
+body.summary-mode .viewbar{ display:none; }
+body.summary-mode header{ padding-bottom:clamp(10px,1.3vh,14px); }
+
+.board[data-view="summary"]{
+  display:grid;
+  grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr) auto;
+  gap:clamp(8px,0.8vw,14px);
+}
+.sum-synth, .sum-top, .sum-tile{
+  background:var(--paper);
+  border:1px solid var(--rule); border-radius:10px;
+  box-shadow:0 2px 8px rgba(0,55,103,0.06);
+  min-height:0; overflow:hidden;
+}
+.sum-synth{
+  display:flex; flex-direction:column;
+  border-top:4px solid var(--pink);
+  padding:clamp(16px,1.8vw,40px) clamp(18px,2vw,44px);
+}
+.sum-top{
+  display:flex; flex-direction:column;
+  border-top:4px solid var(--navy);
+  padding:clamp(14px,1.2vw,26px);
+}
+.sum-kicker{
+  font-size:clamp(11px,0.7vw,15px); font-weight:800; letter-spacing:0.14em; text-transform:uppercase;
+  color:var(--pink);
+}
+.sum-top .sum-kicker{ color:var(--navy); }
+.sum-text{
+  flex:1; min-height:0; overflow:hidden;   /* js/wall.js shrinks the type until it fits */
+  font-size:clamp(18px,1.55vw,36px); line-height:1.4; color:var(--navy);
+}
+.sum-text p{ margin-top:0.6em; max-width:62ch; }
+.sum-text .sum-placeholder{ color:var(--muted); font-style:italic; }
+.sum-total{
+  margin-top:clamp(10px,1vw,20px); padding-top:clamp(8px,0.8vw,14px);
+  border-top:1px solid var(--rule);
+  font-size:clamp(13px,0.85vw,19px); color:var(--muted);
+}
+.sum-total strong{ color:var(--navy); font-size:1.4em; }
+.sum-top-list{
+  flex:1; min-height:0;
+  display:flex; flex-direction:column; gap:clamp(8px,0.7vw,12px);
+  margin-top:clamp(10px,0.8vw,16px); padding:7px 0 0 7px;   /* room for the rank badges */
+}
+/* top five: compact, so all five fit beside the synthesis */
+.board[data-view="summary"] .sum-top .note{ padding:7px 11px; }
+.board[data-view="summary"] .note .idea{
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
+}
+.board[data-view="summary"] .sum-top .note .from{ display:none; }
+.board[data-view="summary"] .sum-top .note-meta{ margin-top:4px; }
+.board[data-view="summary"] .note.ranked .rank{ display:flex; }
+.sum-tiles{
+  grid-column:1 / -1;
+  display:grid; grid-template-columns:repeat(6, minmax(0,1fr));
+  gap:clamp(8px,0.8vw,14px);
+}
+.sum-tile{
+  border-top:4px solid var(--accent, var(--muted));
+  padding:clamp(10px,0.8vw,16px) clamp(12px,0.9vw,18px);
+}
+.sum-tile[data-id]{ cursor:pointer; }
+.sum-tile h3{
+  display:flex; align-items:center; gap:7px;
+  font-size:clamp(12px,0.85vw,19px); font-weight:700; color:var(--navy);
+}
+.sum-tile h3 .swatch{ width:9px; height:9px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+.sum-tile small{
+  display:block; margin-top:3px;
+  font-size:clamp(10px,0.6vw,13px); letter-spacing:0.05em; text-transform:uppercase; color:var(--muted);
+}
+.sum-tile p{
+  margin-top:clamp(6px,0.5vw,10px);
+  font-size:clamp(13px,0.85vw,19px); line-height:1.35; color:var(--ink);
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden;
+}
+.sum-tile .dots{ margin-top:8px; font-size:clamp(11px,0.7vw,15px); }
+
+.preview-bar{
+  flex-shrink:0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:8px clamp(16px,3vw,48px);
+  background:var(--pink); color:#fff;
+  font-size:clamp(13px,0.75vw,16px);
+}
+.preview-bar > span{ flex:1; min-width:240px; }
+
 /* ---------------- facilitator mode ---------------- */
 .facil-strip{
   flex-shrink:0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
@@ -537,6 +627,10 @@ body.facil .note{ touch-action:none; user-select:none; -webkit-user-select:none;
   .column, .col-body{ overflow:visible; }
   .board[data-view="recent"], .board[data-view="top"], .board[data-view="area"]{ overflow:visible; }
   .board[data-view="latest"]{ min-height:60vh; }
+  .board[data-view="summary"]{ display:flex; flex-direction:column; gap:14px; }
+  .sum-synth, .sum-top, .sum-tile{ overflow:visible; }
+  .sum-tiles{ grid-template-columns:1fr 1fr; gap:10px; }
+  .sum-text{ font-size:19px; }
   .note.latest-note{ padding:22px; }
 
   footer{

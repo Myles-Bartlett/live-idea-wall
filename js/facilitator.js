@@ -8,6 +8,8 @@
    Signed in, a facilitator can:
      - tap a note: edit its text and area, hide it, move its stack, split it
      - drag a note onto another note to stack them, or onto a column to move it
+     - write the closing synthesis, preview the closing summary on one
+       screen, and switch every screen between the live wall and the summary
      - open the panel: rotating notes, "Something else" column, hidden ideas,
        sample ideas, and export (CSV / JSON, with feelings and follow-up emails)
    Facilitator mode signs itself out after 10 idle minutes.
@@ -47,6 +49,7 @@ const Facil = (() => {
     active = false;
     document.body.classList.remove("facil");
     stripEl.hidden = true;
+    setSummaryPreview(false);
     closeSheet();
     render();
     if (message) showToast(message, false);
@@ -394,6 +397,17 @@ const Facil = (() => {
           (demo() ? "Demo mode: changes stay in this browser." : "Changes reach every screen within a second or two.") + '</p>' +
         '<p class="facil-rule"><strong>Moderation:</strong> ' + MODERATION + '</p>' +
 
+        '<h3 class="detail-h"><label for="sumT">Closing synthesis</label></h3>' +
+        '<p class="af-help">Three to five sentences on the big themes you heard. Shown large on the closing summary. ' +
+          'Each line becomes its own paragraph.</p>' +
+        '<div class="af"><textarea id="sumT" rows="6"></textarea></div>' +
+        '<div class="facil-row">' +
+          '<button type="button" class="facil-btn" id="saveSum">Save synthesis</button>' +
+          '<button type="button" class="facil-btn" id="previewSum">Preview on this screen only</button>' +
+        '</div>' +
+        '<button type="button" class="af-post" id="viewBtn">' +
+          (st.view === "summary" ? "Return every screen to the live wall" : "Show the closing summary on every screen") + '</button>' +
+
         '<h3 class="detail-h"><label for="notesT">Facilitators’ notes</label></h3>' +
         '<p class="af-help">One per line. They rotate along the bottom of the wall.</p>' +
         '<div class="af"><textarea id="notesT" rows="5"></textarea></div>' +
@@ -428,6 +442,21 @@ const Facil = (() => {
     );
 
     sheet.querySelector("#notesT").value = (st.notes || []).join("\n");
+    const sumT = sheet.querySelector("#sumT");
+    sumT.value = st.summary || "";
+    const saveSum = () => saveSettings({ summary: sumT.value.trim() });
+    sheet.querySelector("#saveSum").addEventListener("click", async () => {
+      if (await saveSum()) showToast("Synthesis saved.", false);
+    });
+    sheet.querySelector("#previewSum").addEventListener("click", async () => {
+      if (sumT.value.trim() !== (Store.settings().summary || "") && !await saveSum()) return;
+      closeSheet();
+      setSummaryPreview(true);
+    });
+    sheet.querySelector("#viewBtn").addEventListener("click", async () => {
+      if (sumT.value.trim() !== (Store.settings().summary || "")) await saveSum();
+      if (await toggleSummary()) closeSheet();
+    });
     sheet.querySelector("#saveNotes").addEventListener("click", async () => {
       const notes = sheet.querySelector("#notesT").value.split("\n").map(l => l.trim()).filter(Boolean);
       if (await saveSettings({ notes })) showToast("Notes saved.", false);
@@ -446,6 +475,18 @@ const Facil = (() => {
     sheet.querySelector("#exportCsv").addEventListener("click", () => exportIdeas("csv"));
     sheet.querySelector("#exportJson").addEventListener("click", () => exportIdeas("json"));
     sheet.querySelector("#facilOut").addEventListener("click", () => signOut());
+  }
+
+  // Switch every screen between the live wall and the closing summary.
+  async function toggleSummary(){
+    const toSummary = Store.settings().view !== "summary";
+    if (toSummary && !confirm("Show the closing summary on every screen now?")) return false;
+    const ok = await saveSettings({ view: toSummary ? "summary" : "wall" });
+    if (ok){
+      setSummaryPreview(false);
+      showToast(toSummary ? "Every screen now shows the closing summary." : "Every screen is back on the live wall.", false);
+    }
+    return ok;
   }
 
   async function saveSettings(patch){
@@ -535,6 +576,8 @@ const Facil = (() => {
 
   document.getElementById("gearBtn").addEventListener("click", () => active ? openPanel() : openSignIn());
   stripEl.querySelector("#stripPanel").addEventListener("click", openPanel);
+  stripEl.querySelector("#stripView").addEventListener("click", () => toggleSummary());
+  document.getElementById("endPreview").addEventListener("click", () => setSummaryPreview(false));
   stripEl.querySelector("#stripOut").addEventListener("click", () => signOut());
 
   ["pointerdown", "keydown"].forEach(ev => window.addEventListener(ev, () => { lastActivity = Date.now(); }, { passive: true }));
