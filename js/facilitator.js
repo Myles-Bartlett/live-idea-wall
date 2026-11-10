@@ -163,7 +163,7 @@ const Facil = (() => {
     const s = stackOf(rootId);
     if (!s || s.area === area) return;
     if (await updateAll(s.members.map(m => m.id), { area })){
-      offsets.set(area, 0);
+      resetTop.add(area);
       showToast("Moved to " + AREA[area].name + ".", false);
     }
   }

@@ -52,7 +52,7 @@ this later, so keep the code readable and the docs current.
   The **secret / service_role** key must never appear in this repo.
 - Security lives in the database (RLS + the `support_idea` function), not in the front end.
 - Must work in Microsoft Edge on a Surface Hub (touch, ~1920x1080 or 4K landscape) and on
-  phones in Safari/Chrome. Never let a wall column scroll; cap and show "+N more".
+  phones in Safari/Chrome. Wall columns in the Areas view scroll on their own (Myles's call, Nov 2026, replacing the old "+N more" paging). The flowing views (Newest, Most supported) still cap and show "+N more".
 - Keep accessibility: AA contrast on notes, area label on every note (not colour alone),
   large touch targets, respects reduced motion.
 - Prefer small, reviewable commits with plain-English messages. Ask Myles before deleting files

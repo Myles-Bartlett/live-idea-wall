@@ -167,7 +167,7 @@ function openFind(){
     const s = lastModel && lastModel.stacks.find(x => x.root.id === rootId);
     // outline it on the wall, at the top of its column, for two minutes
     spotlit.set(rootId, Date.now());
-    if (s) offsets.set(s.area, 0);
+    if (s) resetTop.add(s.area);
     render();
     openDetail(rootId);
   });

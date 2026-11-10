@@ -23,8 +23,8 @@ const ROTATE_SECONDS = 45;
 // Views the auto-rotation cycles through, in order.
 const ROTATION = ["columns", "recent", "top", "latest"];
 
-// A column holding more than fits pages to its next set this often.
-const PAGE_SECONDS = 14;
+// The view & filter menu closes itself after this long without a choice.
+const MENU_IDLE_SECONDS = 20;
 
 // The facilitators' notes along the bottom rotate this often.
 const NOTE_SECONDS = 8;
@@ -42,10 +42,11 @@ const tallyTodayEl = document.getElementById("tallyToday");
 const subtitleEl   = document.getElementById("subtitle");
 const previewBarEl = document.getElementById("previewBar");
 
-const offsets = new Map();     // area key -> index of the first note shown (paging)
+const resetTop = new Set();    // area keys whose column should scroll back to the top on the next draw
+let lastScrollAt = 0;          // when a column was last scrolled by hand
+let menuTimer = null;
 let seen = null;               // root ids drawn last time; null before the first draw
 let rotateTimer = null;
-let pagePausedUntil = 0;
 let renderQueued = false;
 let noteIdx = 0;
 let lastModel = null;
@@ -178,9 +179,9 @@ function setDensity(view, columnCount, noteCount){
   }
   if (view === "columns"){
     root.style.setProperty("--cols", columnCount);
-    // deepest column decides the type size
-    fs = noteCount >= 14 ? 11 : noteCount >= 10 ? 12 : noteCount >= 6 ? 13 : 14;
-    boardEl.dataset.density = noteCount >= 24 ? "2" : noteCount >= 12 ? "1" : "0";
+    // columns scroll, so type stays full size and no note is cut short
+    fs = 14;
+    boardEl.dataset.density = "0";
   } else {
     // a flowing wall: more, narrower columns as the idea count grows
     const cols = noteCount <= 12 ? 3
@@ -208,8 +209,8 @@ function renderColumns(stacks, settings){
     const count = mine.reduce((n, s) => n + s.size, 0);
     deepest = Math.max(deepest, mine.length);
 
-    // a note that just landed here is shown from the top of the column
-    if (seen && mine.some(s => !seen.has(s.root.id))) offsets.set(a.key, 0);
+    // a note that just landed here is shown by scrolling the column back to the top
+    if (seen && mine.some(s => !seen.has(s.root.id))) resetTop.add(a.key);
 
     const notes = mine.map(s => renderNote(s)).join("");
     return (
@@ -378,8 +379,9 @@ function setSummaryPreview(on){
 
 // Many changes can arrive at once; draw at most once per frame.
 function render(){
-  // never redraw under a note a facilitator is dragging
+  // never redraw under a note a facilitator is dragging, or a column someone is scrolling
   if (typeof Facil !== "undefined" && Facil.dragging()){ setTimeout(render, 250); return; }
+  if (Date.now() - lastScrollAt < 1200){ setTimeout(render, 600); return; }
   if (renderQueued) return;
   renderQueued = true;
   requestAnimationFrame(() => { renderQueued = false; draw(); });
@@ -417,6 +419,10 @@ function draw(){
   const stripView = document.getElementById("stripView");
   if (stripView) stripView.textContent = summaryOn ? "Back to the live wall" : "Show closing summary";
 
+  // a redraw rebuilds the columns, so remember how far each one was scrolled
+  const keepScroll = new Map();
+  boardEl.querySelectorAll(".col-body").forEach(b => keepScroll.set(b.dataset.area, b.scrollTop));
+
   const empty = filtering
     ? '<p class="board-message">No ideas match ' + escapeHtml(filterLabel(s)) + ' yet.</p>'
     : '<p class="board-message">Waiting for the first idea…</p>';
@@ -438,6 +444,12 @@ function draw(){
 
   seen = new Set(stacks.map(x => x.root.id));
 
+  // put each column back where it was (or at the top, if a new idea just landed there)
+  boardEl.querySelectorAll(".col-body").forEach(b => {
+    b.scrollTop = resetTop.has(b.dataset.area) ? 0 : (keepScroll.get(b.dataset.area) || 0);
+  });
+  resetTop.clear();
+
   // view bar state
   viewbarEl.querySelectorAll(".vbtn[data-view]").forEach(b => {
     b.setAttribute("aria-pressed", b.dataset.view === s.view ? "true" : "false");
@@ -451,6 +463,7 @@ function draw(){
   areaFilterEl.classList.toggle("on", !!s.area);
   feelFilterEl.classList.toggle("on", !!s.feel);
   clearFiltersEl.hidden = !filtering;
+  menuBtnEl.classList.toggle("on", filtering);
 
   // running total, and how many came in today
   const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
@@ -462,106 +475,11 @@ function draw(){
 
   if (isPhoneLayout() || layout === "latest") return;   // phones scroll; Latest is one note
   if (layout === "summary") fitSummary();
-  else if (layout === "columns") fitColumns();
+  else if (layout === "columns") return;   // columns scroll, nothing to trim
   else fitFlow();
 }
 
-/* Nobody scrolls a wall. In the Areas view a column holding more ideas than
-   fit shows as many as fit and then CYCLES: every PAGE_SECONDS it moves to
-   the next set, wrapping around, so every idea gets its turn on screen.
-   The "+N more" chip is also a button: tap it to move on straight away. */
-
-function fitOneColumn(body){
-  const notes = Array.from(body.querySelectorAll(".note"));
-  const oldChip = body.querySelector(".more-chip");
-  if (oldChip) oldChip.remove();
-  if (notes.length === 0) return;
-
-  const key = body.dataset.area;
-  let offset = offsets.get(key) || 0;
-  if (offset >= notes.length) offset = 0;
-
-  // everything fits: nothing to page
-  notes.forEach(n => { n.style.display = ""; });
-  if (offset === 0 && body.scrollHeight <= body.clientHeight){
-    offsets.set(key, 0);
-    return;
-  }
-
-  // Too many. Put the chip in first so its room is counted, then add notes
-  // from the offset until the next one would not fit. Paging runs forward
-  // and then starts over rather than wrapping mid-page, which would put the
-  // tail of the column above its head.
-  notes.forEach(n => { n.style.display = "none"; });
-  const chip = document.createElement("button");
-  chip.type = "button";
-  chip.className = "more-chip";
-  body.appendChild(chip);
-
-  let shown = 0;
-  for (let i = offset; i < notes.length; i++){
-    notes[i].style.display = "";
-    if (shown > 0 && body.scrollHeight > body.clientHeight){   // always keep at least one
-      notes[i].style.display = "none";
-      break;
-    }
-    shown++;
-  }
-
-  // count ideas, not notes, so a stack of 3 counts as 3 like the column heading
-  let hiddenIdeas = 0;
-  notes.forEach((n, i) => {
-    if (i < offset || i >= offset + shown) hiddenIdeas += parseInt(n.dataset.size, 10) || 1;
-  });
-
-  offsets.set(key, offset);
-  chip.dataset.step = shown;
-  chip.textContent = "+" + hiddenIdeas + " more ↻";
-  chip.setAttribute("aria-label", hiddenIdeas + " more ideas in this column. Show the next set.");
-  chip.addEventListener("click", e => {
-    e.stopPropagation();
-    advanceColumn(body);
-    pagePausedUntil = Date.now() + PAGE_SECONDS * 1000;
-  });
-}
-
-function advanceColumn(body){
-  const chip = body.querySelector(".more-chip");
-  const count = body.querySelectorAll(".note").length;
-  if (!chip || count === 0) return;
-  const key = body.dataset.area;
-  const next = (offsets.get(key) || 0) + (parseInt(chip.dataset.step, 10) || 1);
-  offsets.set(key, next >= count ? 0 : next);   // page forward, then back to the top
-  fitOneColumn(body);
-  replayArrival(body);
-}
-
-function fitColumns(){
-  boardEl.querySelectorAll(".col-body").forEach(fitOneColumn);
-}
-
-// Notes revealed by paging fade in like new ones.
-function replayArrival(body){
-  body.querySelectorAll(".note").forEach(n => {
-    if (n.style.display === "none") return;
-    n.classList.remove("arrive");
-    void n.offsetWidth;            // restart the animation
-    n.classList.add("arrive");
-  });
-}
-
-function startPaging(){
-  setInterval(() => {
-    if (boardEl.dataset.view !== "columns") return;
-    if (Date.now() < pagePausedUntil) return;
-    if (typeof Facil !== "undefined" && Facil.dragging()) return;
-    boardEl.querySelectorAll(".col-body").forEach(body => {
-      if (body.querySelector(".more-chip")) advanceColumn(body);
-    });
-  }, PAGE_SECONDS * 1000);
-}
-
-/* Same idea for the flowing views: show as many notes as fit, so nothing is
+/* Nobody scrolls a wall. The flowing views show as many notes as fit, so nothing is
    sliced in half, and say how many did not. Extra notes in a multi-column
    layout spill sideways into columns off the right edge, so width counts
    as overflow too. */
@@ -621,11 +539,24 @@ function showStatus(state){
 
 /* ---------------- view bar, keyboard, rotation ---------------- */
 
-function wakeViewbar(){
-  viewbarEl.classList.add("awake");
-  clearTimeout(wakeViewbar._t);
-  wakeViewbar._t = setTimeout(() => viewbarEl.classList.remove("awake"), 4000);
+const menuBtnEl = document.getElementById("menuBtn");
+
+function setMenu(open){
+  viewbarEl.hidden = !open;
+  menuBtnEl.setAttribute("aria-expanded", open ? "true" : "false");
+  clearTimeout(menuTimer);
+  // on the shared Hub a menu someone walked away from closes by itself
+  if (open) menuTimer = setTimeout(() => setMenu(false), MENU_IDLE_SECONDS * 1000);
 }
+// every choice in the menu restarts the idle timer
+function wakeViewbar(){ if (!viewbarEl.hidden) setMenu(true); }
+
+menuBtnEl.addEventListener("click", () => setMenu(viewbarEl.hidden));
+document.addEventListener("pointerdown", e => {
+  if (!viewbarEl.hidden && !e.target.closest(".header-left")) setMenu(false);
+});
+// scrolling counts as activity: keeps redraws from yanking a column away mid-swipe
+boardEl.addEventListener("scroll", () => { lastScrollAt = Date.now(); }, { capture:true, passive:true });
 
 function restartRotation(s){
   clearInterval(rotateTimer);
@@ -730,7 +661,11 @@ function closeSheet(){
 
 ["pointerdown", "keydown", "input"].forEach(ev => sheetEl.addEventListener(ev, keepSheetAwake, { passive: true }));
 scrimEl.addEventListener("click", e => { if (e.target === scrimEl) closeSheet(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !scrimEl.hidden) closeSheet(); });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (!scrimEl.hidden) closeSheet();
+  else if (!viewbarEl.hidden){ setMenu(false); menuBtnEl.focus(); }
+});
 
 /* ---------------- "Add your idea" / "Build on this idea" ---------------- */
 
@@ -775,9 +710,8 @@ Store.onChange(render);
 Store.onStatus(showStatus);
 showStatus(Store.status());
 restartRotation(writeState({}));
-startPaging();
 // redraw now and then so "new" outlines expire after two minutes
-setInterval(render, 15 * 1000);
+setInterval(render, 15 * 1000);   // (render waits if someone is mid-scroll)
 setInterval(rotateNote, NOTE_SECONDS * 1000);
 Store.onChange(() => { if (!highlightEl.textContent) rotateNote(); });
 Store.start();

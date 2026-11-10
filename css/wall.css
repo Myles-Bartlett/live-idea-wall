@@ -21,8 +21,8 @@ body.wall{
 header{
   background:var(--paper);
   border-bottom:1px solid var(--rule);
-  /* the extra bottom room is for the view bar, which straddles the header's edge */
-  padding:clamp(10px,1.3vh,16px) clamp(24px,3vw,48px) calc(clamp(10px,1.3vh,14px) + 20px);
+  z-index:20;   /* the view & filter menu drops over the board */
+  padding:clamp(10px,1.3vh,16px) clamp(24px,3vw,48px);
   text-align:center;
   position:relative;
   flex-shrink:0;
@@ -33,19 +33,14 @@ header{
 }
 .header-main{ grid-column:2; min-width:0; }
 .logo{ display:block; height:auto; object-fit:contain; }
-.logo-left { grid-column:1; justify-self:start;
-  width:clamp(120px,10vw,190px); }
+.header-left{
+  grid-column:1; justify-self:start;
+  display:flex; flex-direction:column; align-items:flex-start; gap:clamp(6px,1vh,10px);
+  position:relative;
+}
+.logo-left{ width:clamp(120px,10vw,190px); }
 .logo-right{ grid-column:3; justify-self:end;
   width:clamp(110px,9vw,170px); }
-.wordmark{
-  display:inline-flex; align-items:center; gap:10px;
-  margin-bottom:clamp(6px,1vh,10px);
-}
-.wordmark .tag{
-  font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
-  color:#fff; background:var(--pink);
-  padding:4px 10px; border-radius:999px;
-}
 h1{
   font-weight:700;
   font-size:clamp(19px, 2.1vw, 44px);
@@ -58,15 +53,35 @@ h1{
   color:var(--muted);
 }
 
-/* ---------------- View bar ---------------- */
-.viewbar{
-  position:absolute; left:50%; bottom:0; transform:translate(-50%,50%);
-  z-index:5;
-  display:flex; align-items:center; gap:6px;
-  padding:5px 8px; border-radius:999px;
-  background:var(--paper); border:1px solid var(--rule);
-  box-shadow:0 4px 14px rgba(0,0,0,0.08);
+/* ---------------- View & filter menu ---------------- */
+/* A button under the Sheridan logo opens a panel holding every view, filter and switch. */
+.menu-btn{
+  display:inline-flex; align-items:center; gap:7px;
+  font:inherit; font-size:clamp(11px,0.7vw,14px); font-weight:700;
+  letter-spacing:0.04em; text-transform:uppercase;
+  color:var(--navy); background:var(--panel);
+  border:1px solid var(--rule); border-radius:999px;
+  min-height:38px; padding:6px 14px; cursor:pointer; white-space:nowrap;
+  transition:background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
+.menu-btn:hover, .menu-btn[aria-expanded="true"]{ border-color:var(--navy); }
+.menu-btn:focus-visible{ outline:3px solid var(--navy); outline-offset:2px; }
+/* navy while a filter is on, so a filtered wall is obvious even with the menu closed */
+.menu-btn.on{ background:var(--navy); color:#fff; border-color:var(--navy); }
+
+.viewbar{
+  position:absolute; left:0; top:100%; margin-top:8px;
+  z-index:30;
+  width:max-content; min-width:240px;
+  display:flex; flex-direction:column; align-items:stretch; gap:8px;
+  padding:12px; border-radius:14px;
+  background:var(--paper); border:1px solid var(--rule);
+  box-shadow:0 8px 28px rgba(0,25,50,0.18);
+  text-align:left;
+}
+.viewbar[hidden], .viewbar [hidden]{ display:none !important; }
+.viewbar .vbtn, .viewbar .vselect{ width:100%; text-align:left; }
+.viewbar .vbtn{ display:flex; justify-content:space-between; align-items:center; }
 /* new: always visible. The prototype faded it in on hover, and a touch
    screen has no hover, so on the Hub it could not be found. */
 .vbtn, .vselect{
@@ -87,7 +102,7 @@ h1{
 .vselect:hover{ color:var(--navy); border-color:var(--navy); }
 .vselect.on{ background:var(--navy); color:#fff; border-color:var(--navy); }
 .vselect option, .vselect optgroup{ text-transform:none; color:var(--ink); background:#fff; }
-.vsep{ width:1px; height:20px; background:var(--rule); margin:0 3px; }
+.vsep{ height:1px; background:var(--rule); margin:2px 0; }
 
 /* ---------------- Board ---------------- */
 .board{
@@ -149,9 +164,13 @@ h1{
   letter-spacing:0.06em; text-transform:uppercase;
 }
 
-/* A column never scrolls: js/wall.js shows what fits and pages through the rest. */
+/* A column holding more than fits scrolls on its own (touch, wheel or scrollbar). */
 .col-body{
-  flex:1; min-height:0; overflow:hidden;
+  flex:1; min-height:0;
+  overflow-y:auto; overflow-x:hidden;
+  overscroll-behavior:contain;           /* the page behind never moves */
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin; scrollbar-color:var(--rule) transparent;
   padding:8px 9px 12px;
   display:flex; flex-direction:column; gap:7px;
   background:var(--panel);
@@ -234,6 +253,9 @@ h1{
 }
 
 /* new: a note that just arrived keeps an outline and sits at the top for 2 minutes */
+.col-body::-webkit-scrollbar{ width:8px; }
+.col-body::-webkit-scrollbar-thumb{ background:var(--rule); border-radius:4px; }
+
 .note.fresh{
   box-shadow:0 0 0 3px var(--accent, var(--navy)), 0 4px 14px rgba(0,55,103,0.18);
 }
@@ -429,7 +451,7 @@ footer{
 .status[data-state="demo"]::before{ background:#fff; }
 
 /* ---------------- the closing summary ---------------- */
-body.summary-mode .viewbar{ display:none; }
+body.summary-mode .viewbar, body.summary-mode .menu-btn{ display:none; }
 body.summary-mode header{ padding-bottom:clamp(10px,1.3vh,14px); }
 
 .board[data-view="summary"]{
@@ -608,7 +630,6 @@ body.facil .note{ touch-action:none; user-select:none; -webkit-user-select:none;
 
 @media (max-width: 1100px){
   .board[data-view="columns"]{ grid-template-columns:repeat(3, minmax(0,1fr)); }
-  .viewbar{ position:static; grid-column:1/-1; justify-self:center; transform:none; justify-content:center; flex-wrap:wrap; margin-top:8px; box-shadow:none; border-radius:16px; }
 }
 
 /* ---------------- phones: one person, one hand, so the page scrolls ---------------- */
@@ -618,10 +639,12 @@ body.facil .note{ touch-action:none; user-select:none; -webkit-user-select:none;
   body, body.wall{ height:auto; min-height:100vh; overflow:visible; }
   header{ display:block; text-align:left; padding:12px 16px; }
   .logo-left{ width:110px; margin-bottom:10px; }
-  .logo-right, .wordmark, .subtitle{ display:none; }
+  .logo-right, .subtitle{ display:none; }
+  .header-left{ flex-direction:row; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .logo-left{ margin-bottom:0; }
   h1{ font-size:21px; }
-  .viewbar{ justify-content:flex-start; padding:6px; gap:6px; border-radius:14px; }
-  .vbtn .k, .vsep, #stackBtn, #rotateBtn{ display:none; }
+  .viewbar{ width:min(280px, calc(100vw - 32px)); }
+  .vbtn .k{ display:none; }
 
   .board{ padding:12px 16px; }
   .board[data-view="columns"]{ display:flex; flex-direction:column; gap:14px; }
