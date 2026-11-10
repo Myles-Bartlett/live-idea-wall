@@ -1,0 +1,9 @@
+---
+# Read by cPanel > Git Version Control > "Deploy HEAD Commit".
+# Copies only the public site files into the web folder of the "ideawall" account.
+# Private notes, SQL files, docs and the early prototype are deliberately NOT copied.
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/ideawall/public_html/
+    - /bin/rsync -a index.html add.html sign.html config.js $DEPLOYPATH
+    - /bin/rsync -a css js assets $DEPLOYPATH
