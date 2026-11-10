@@ -9,11 +9,11 @@ Ideas land live on a Microsoft Surface Hub, colour-coded into six opportunity ar
 "Something else". Delegates support ideas and build on them. Facilitators curate the wall and
 switch it to a closing summary at the end.
 
-- **Wall (Surface Hub):** https://myles-bartlett.github.io/live-idea-wall/
-- **Phone form (the QR code target):** https://myles-bartlett.github.io/live-idea-wall/#add
-- **Booth tablets:** https://myles-bartlett.github.io/live-idea-wall/#add?kiosk
-- **Printable QR sign:** https://myles-bartlett.github.io/live-idea-wall/sign.html
-- **Try it without touching real data:** https://myles-bartlett.github.io/live-idea-wall/?demo
+- **Wall (Surface Hub):** https://ideawall.design.sheridanc.on.ca/
+- **Phone form (the QR code target):** https://ideawall.design.sheridanc.on.ca/#add
+- **Booth tablets:** https://ideawall.design.sheridanc.on.ca/#add?kiosk
+- **Printable QR sign:** https://ideawall.design.sheridanc.on.ca/sign.html
+- **Try it without touching real data:** https://ideawall.design.sheridanc.on.ca/?demo
   (also `?demo=400` for a crowded wall, `?demo&live` for a new sample idea every 8 seconds)
 
 ## How it works

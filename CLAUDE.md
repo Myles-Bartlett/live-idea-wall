@@ -40,7 +40,7 @@ this later, so keep the code readable and the docs current.
 - Two entry points on one site: the wall (`/`) and a phone/tablet submission view
   (`/#add`, the QR code target). A separate `add.html` is fine if cleaner.
 - No Python server, no OneDrive/Microsoft Forms polling. Delegates submit through the page itself.
-- Live at https://myles-bartlett.github.io/live-idea-wall/ (GitHub Pages from `main`, root).
+- Live at https://ideawall.design.sheridanc.on.ca/ (Sheridan cPanel, deployed from `main` by `.cpanel.yml`: in cPanel > Git Version Control > Manage > Update from Remote, then Deploy HEAD Commit). The old GitHub Pages copy at https://myles-bartlett.github.io/live-idea-wall/ still works.
 - Every CSS/JS link in the HTML ends in `?v=N`. Raise N on every release so screens don't mix
   old and new files (Pages lets browsers cache for 10 minutes).
 - Follow-up emails live in the `followups` table, readable only by facilitators, never on the
