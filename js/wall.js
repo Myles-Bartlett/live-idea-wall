@@ -670,7 +670,7 @@ document.addEventListener("keydown", e => {
 /* ---------------- "Add your idea" / "Build on this idea" ---------------- */
 
 // parent: {id, text, area} to build on an idea, or nothing for a new one.
-// The Hub is shared: no remembered names or drafts, and the pop-up closes
+// The Hub is shared: no drafts, and the pop-up closes
 // itself shortly after posting so the next person starts fresh.
 function openAdd(parent){
   const personal = isPersonalScreen();
@@ -678,7 +678,6 @@ function openAdd(parent){
   sheetForm = AddForm.mount(sheetEl, {
     parent: parent || null,
     source: personal ? "phone" : "hub",
-    rememberName: personal,
     keepDraft: false,
     resetAfter: personal ? 0 : 12,
     idleReset: personal ? 0 : 120,

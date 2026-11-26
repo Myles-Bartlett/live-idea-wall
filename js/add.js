@@ -11,7 +11,6 @@ const statusEl = document.getElementById("addStatus");
 
 AddForm.mount(document.getElementById("addRoot"), kiosk ? {
   source: "kiosk",
-  rememberName: false,
   keepDraft: false,
   resetAfter: KIOSK_RESET_SECONDS,
   idleReset: KIOSK_IDLE_SECONDS

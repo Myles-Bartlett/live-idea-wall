@@ -9,8 +9,7 @@
    AddForm.mount(container, options) draws it. Options:
      parent        {id, text, area} to "build on" an idea, or null
      source        saved with the idea: "phone", "kiosk" or "hub"
-     rememberName  prefill the name and email next time (personal phones only)
-     keepDraft     keep a half-typed idea if the page closes
+     keepDraft     keep a half-typed idea (text, area, feeling) if the page closes
      post          async (row, followup) => "sent" | "queued"   (default: Outbox.send)
      supportHref   where "Support other ideas" goes (omit to hide it)
      onClose       shows Cancel / "Back to the wall" and is called by them
@@ -23,8 +22,12 @@ const AddForm = (() => {
   const HARD_CAP = 280;   // the database refuses longer
   const MIN = 3;
   const DRAFT_KEY = "ideawall:draft:v1";
-  const NAME_KEY = "ideawall:name:v1";
-  const EMAIL_KEY = "ideawall:email:v1";
+  // Older versions remembered the name and email on the device. Devices get
+  // shared (booth iPads, a phone passed around), so that was a risk of ideas
+  // being credited to the wrong person. Name and email are never saved now,
+  // and mount() deletes anything an earlier version left behind.
+  const OLD_NAME_KEY = "ideawall:name:v1";
+  const OLD_EMAIL_KEY = "ideawall:email:v1";
   // Simple shape check; the database checks again.
   const EMAIL_OK = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -41,10 +44,13 @@ const AddForm = (() => {
 
   function mount(container, options){
     const o = Object.assign({
-      parent: null, source: "web", rememberName: true, keepDraft: true,
+      parent: null, source: "web", keepDraft: true,
       post: (row, followup) => Outbox.send(row, followup), supportHref: null, onClose: null,
       resetAfter: 0, idleReset: 0
     }, options);
+
+    write(OLD_NAME_KEY, null);
+    write(OLD_EMAIL_KEY, null);
 
     let timers = [];
     const later = (fn, ms) => timers.push(setTimeout(fn, ms));
@@ -58,8 +64,6 @@ const AddForm = (() => {
       try { if (o.keepDraft && !o.parent) draft = JSON.parse(read(DRAFT_KEY) || "null") || {}; } catch (e) {}
       let area = o.parent ? o.parent.area : (draft.area || "");
       let feeling = FEELING[draft.feeling] ? draft.feeling : "";
-      const name = o.rememberName ? (draft.name || read(NAME_KEY) || "") : "";
-      const email = o.rememberName ? (draft.email || read(EMAIL_KEY) || "") : "";
       const feelingChip = f => '<button type="button" class="af-feel" data-feeling="' + f.key +
         '" aria-pressed="' + (f.key === feeling) + '">' + esc(f.name) + '</button>';
 
@@ -124,8 +128,10 @@ const AddForm = (() => {
       const count = form.querySelector("#afCount");
       const postBtn = form.querySelector(".af-post");
       text.value = o.parent ? "" : (draft.text || "");
-      nameEl.value = name;
-      emailEl.value = email;
+      // Name and email always start empty, so a shared device never shows the
+      // last person's details.
+      nameEl.value = "";
+      emailEl.value = "";
 
       const err = (id, msg) => {
         const el = form.querySelector("#" + id);
@@ -135,8 +141,7 @@ const AddForm = (() => {
 
       const saveDraft = () => {
         if (!o.keepDraft || o.parent) return;
-        const d = { text: text.value, area, feeling,
-                    name: o.rememberName ? nameEl.value : "", email: o.rememberName ? emailEl.value : "" };
+        const d = { text: text.value, area, feeling };
         write(DRAFT_KEY, d.text || d.area || d.feeling ? JSON.stringify(d) : null);
       };
 
@@ -208,7 +213,6 @@ const AddForm = (() => {
         try {
           const result = await o.post(row, followup);
           write(DRAFT_KEY, null);
-          if (o.rememberName){ write(NAME_KEY, personName || null); write(EMAIL_KEY, emailText || null); }
           showDone(row, result, followup);
         } catch (e) {
           postBtn.disabled = false;
