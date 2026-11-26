@@ -68,7 +68,7 @@ const AddForm = (() => {
         '" aria-pressed="' + (f.key === feeling) + '">' + esc(f.name) + '</button>';
 
       container.innerHTML =
-        '<form class="af" novalidate>' +
+        '<form class="af" novalidate autocomplete="off">' +
           '<h2 class="af-title" id="afTitle">' + (o.parent ? "Build on this idea" : "Add your idea") + '</h2>' +
           (o.parent ? '<blockquote class="af-quote" data-area="' + o.parent.area + '">' + esc(o.parent.text) + '</blockquote>' : '') +
 
@@ -103,14 +103,14 @@ const AddForm = (() => {
 
           '<div class="af-field">' +
             '<label class="af-label" for="afName">Your name and college <span class="af-optional">(optional)</span></label>' +
-            '<input id="afName" type="text" maxlength="80" autocomplete="name" ' +
+            '<input id="afName" type="text" maxlength="80" autocomplete="off" autocorrect="off" data-lpignore="true" ' +
               'placeholder="Leave blank to post anonymously">' +
             '<p class="af-help">Shown on the wall with your idea.</p>' +
           '</div>' +
 
           '<div class="af-field">' +
             '<label class="af-label" for="afEmail">Email for a follow-up <span class="af-optional">(optional)</span></label>' +
-            '<input id="afEmail" type="email" maxlength="254" autocomplete="email" inputmode="email" ' +
+            '<input id="afEmail" type="email" maxlength="254" autocomplete="off" data-lpignore="true" inputmode="email" ' +
               'autocapitalize="off" spellcheck="false" placeholder="you@example.com" aria-describedby="afEmailHelp afEmailErr">' +
             '<p class="af-help" id="afEmailHelp">Private: never shown on the wall. Sheridan uses it only to follow up about your idea.</p>' +
             '<p class="af-error" id="afEmailErr" hidden></p>' +
@@ -220,6 +220,13 @@ const AddForm = (() => {
           err("afPostErr", "That didn’t post. Check your idea and try again.");
         }
       });
+
+      // Safari restores field values when a page is reloaded, reopened from the
+      // back/forward cache or woken from sleep. Wipe the name and email whenever
+      // that happens, so a shared device never shows the last person's details.
+      const wipePerson = () => { if (container.contains(form)){ nameEl.value = ""; emailEl.value = ""; } };
+      window.addEventListener("pageshow", wipePerson);
+      setTimeout(wipePerson, 0);   // after the browser's own restore
 
       updateCount();
       touched();
